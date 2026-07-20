@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Gênesis - Seu agente de produtividade pessoal inteligente para gestão de tarefas, notas e hábitos." />
+    <meta name="theme-color" content="#0b0f19" />
+    <!-- iOS-specific PWA install support (Safari ignores parts of the web manifest) -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Gênesis" />
+    <title>Gênesis - Agente de Produtividade Inteligente</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Google Identity Services (OAuth token client for Google Agenda sync) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <div id="app" class="app-container">
+      
+      <!-- Top Navigation Header -->
+      <header class="app-header">
+        <div class="header-brand">
+          <div class="brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#logo-grad)" />
+              <path d="M2 17L12 22L22 17" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M2 12L12 17L22 12" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <defs>
+                <linearGradient id="logo-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#8B5CF6" />
+                  <stop offset="1" stop-color="#EC4899" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1>Gênesis</h1>
+          <span class="badge">v1.0</span>
+        </div>
+
+        <div class="header-datetime">
+          <span id="current-time">00:00:00</span>
+          <span class="datetime-separator">|</span>
+          <span id="current-date">Carregando data...</span>
+          <span id="sync-status-text" class="sync-status-text hidden"></span>
+        </div>
+
+        <div class="header-actions">
+          <button id="btn-sync-login" class="btn btn-secondary" title="Entrar com Google para sincronizar entre dispositivos">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span>Sincronizar</span>
+          </button>
+          <div id="sync-user-badge" class="sync-user-badge hidden">
+            <img id="sync-user-avatar" class="sync-user-avatar" src="" alt="" />
+            <span id="sync-user-name"></span>
+            <button id="btn-sync-logout" class="btn-icon" title="Sair da conta">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+          <button id="btn-search" class="btn-icon" title="Buscar tarefas e notas">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+          <button id="btn-theme-toggle" class="btn-icon" title="Alternar tema claro/escuro">
+            <svg id="theme-icon-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg id="theme-icon-light" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </button>
+          <button id="btn-backup" class="btn-icon" title="Backup e restauração de dados">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button id="btn-notifications" class="btn-icon" title="Ativar lembretes de hábitos">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+            </svg>
+          </button>
+          <button id="btn-google-calendar" class="btn btn-secondary" title="Google Agenda">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>Agenda</span>
+          </button>
+          <button id="btn-weekly-report" class="btn btn-secondary" title="Relatório Semanal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+            </svg>
+            <span>Relatório</span>
+          </button>
+          <button id="btn-api-config" class="btn btn-secondary" title="Configurar API Key">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>Configurar API</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Quick Capture (natural language, always visible + Ctrl/Cmd+K) -->
+      <div class="quick-capture-wrapper">
+        <div class="quick-capture-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+          <input type="text" id="quick-capture-input" placeholder="Captura rápida — ex: &quot;dentista terça 15h prioridade alta&quot; (Ctrl+K)" autocomplete="off" />
+          <span class="quick-capture-hint">Ctrl+K</span>
+        </div>
+        <div id="quick-capture-preview" class="quick-capture-preview hidden"></div>
+      </div>
+
+      <!-- Main Layout -->
+      <main class="app-main">
+        
+        <!-- Left Column: AI Agent Chat -->
+        <section class="panel panel-chat" id="chat-panel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <div class="agent-avatar">
+                <span class="avatar-pulse"></span>
+                <span class="avatar-letter">G</span>
+              </div>
+              <div>
+                <h2>Gênesis IA</h2>
+                <span class="agent-status" id="agent-status-label">Agente Simulado</span>
+              </div>
+            </div>
+            <button id="btn-clear-chat" class="btn-icon" title="Limpar conversa">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Chat Messages Area -->
+          <div class="chat-messages" id="chat-messages-container">
+            <!-- Messages will be dynamically rendered here -->
+          </div>
+
+          <!-- Chat Suggested Prompts -->
+          <div class="chat-suggestions" id="chat-suggestions-container">
+            <button class="btn-suggestion" data-prompt="Planeje meu dia: veja minhas tarefas pendentes e, se fizer sentido, reagende ou repriorize alguma que esteja atrasada.">📅 Planejar meu dia</button>
+            <button class="btn-suggestion" data-prompt="Quais são minhas tarefas urgentes? Se alguma estiver vencida e ainda com prioridade baixa ou média, aumente a prioridade dela.">⚠️ Tarefas urgentes</button>
+            <button class="btn-suggestion" data-prompt="Crie um hábito chamado 'Beber 2L de água'.">💧 Novo Hábito</button>
+          </div>
+
+          <!-- Chat Input Area -->
+          <form class="chat-input-area" id="chat-form">
+            <button type="button" id="btn-voice-input" class="btn-icon" title="Falar um comando de voz">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <input type="text" id="chat-input" placeholder="Converse com o Gênesis..." autocomplete="off" />
+            <button type="submit" id="btn-send" class="btn btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+        </section>
+
+        <!-- Right Column: Productivity Dashboard -->
+        <section class="dashboard-content">
+
+          <!-- Daily Mood Check-in -->
+          <div class="mood-tracker">
+            <span class="mood-tracker-label">Como você está se sentindo hoje?</span>
+            <div class="mood-options" id="mood-options">
+              <button class="mood-btn" data-mood="1" title="Péssimo">😞</button>
+              <button class="mood-btn" data-mood="2" title="Ruim">😕</button>
+              <button class="mood-btn" data-mood="3" title="Neutro">😐</button>
+              <button class="mood-btn" data-mood="4" title="Bom">🙂</button>
+              <button class="mood-btn" data-mood="5" title="Ótimo">🤩</button>
+            </div>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="summary-cards">
+            <div class="summary-card">
+              <div class="card-icon blue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+              </div>
+              <div class="card-info">
+                <span class="card-label">Tarefas Concluídas</span>
+                <h3 class="card-value" id="stats-tasks-completed">0/0</h3>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="card-icon pink">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <div class="card-info">
+                <span class="card-label">Hábitos Concluídos</span>
+                <h3 class="card-value" id="stats-habits-rate">0%</h3>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="card-icon orange">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div class="card-info">
+                <span class="card-label">Notas Salvas</span>
+                <h3 class="card-value" id="stats-notes-count">0</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab Navigation for Productivity Widgets -->
+          <div class="dashboard-tabs">
+            <button class="tab-btn active" data-tab="tab-tasks">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              <span>Tarefas</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-habits">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+                <path d="M12 2a10 10 0 0 1 10 10h-10V2z"/>
+                <path d="M12 12L2.5 12"/>
+                <path d="M12 12l6.5-6.5"/>
+              </svg>
+              <span>Rastreador de Hábitos</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-notes">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/>
+                <path d="M15 3v6h6"/>
+              </svg>
+              <span>Notas</span>
+            </button>
+          </div>
+
+          <!-- Tab Contents -->
+          <div class="tab-contents">
+            
+            <!-- Tab: Tasks -->
+            <div class="tab-content active" id="tab-tasks">
+              <div class="widget-header">
+                <div class="widget-header-title">
+                  <h2>Suas Tarefas</h2>
+                  <p>Organize e gerencie seus afazeres</p>
+                </div>
+                <button id="btn-open-task-form" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  <span>Adicionar Tarefa</span>
+                </button>
+              </div>
+
+              <div class="task-filters">
+                <button class="filter-btn active" data-filter="all">Todas</button>
+                <button class="filter-btn" data-filter="pending">Pendentes</button>
+                <button class="filter-btn" data-filter="completed">Concluídas</button>
+              </div>
+
+              <!-- Form for New Task (Hidden by default) -->
+              <form id="task-form" class="task-form hidden">
+                <div class="form-row">
+                  <input type="text" id="task-title" placeholder="O que precisa ser feito?" required />
+                </div>
+                <div class="form-row flex-row">
+                  <div class="form-col">
+                    <label for="task-priority">Prioridade</label>
+                    <select id="task-priority">
+                      <option value="low">Baixa</option>
+                      <option value="medium" selected>Média</option>
+                      <option value="high">Alta</option>
+                    </select>
+                  </div>
+                  <div class="form-col">
+                    <label for="task-due">Prazo</label>
+                    <input type="date" id="task-due" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label for="task-recurrence">Repetir</label>
+                  <select id="task-recurrence">
+                    <option value="">Não repetir</option>
+                    <option value="daily">Diariamente</option>
+                    <option value="weekly">Semanalmente</option>
+                    <option value="monthly">Mensalmente</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" id="btn-cancel-task" class="btn btn-secondary">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+              </form>
+
+              <div class="task-list" id="task-list-container">
+                <!-- Tasks will be rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Tab: Habits -->
+            <div class="tab-content" id="tab-habits">
+              <div class="widget-header">
+                <div class="widget-header-title">
+                  <h2>Rastreador de Hábitos</h2>
+                  <p>Mantenha a consistência nos seus objetivos</p>
+                </div>
+                <button id="btn-open-habit-form" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  <span>Adicionar Hábito</span>
+                </button>
+              </div>
+
+              <!-- Form for New Habit (Hidden by default) -->
+              <form id="habit-form" class="habit-form hidden">
+                <div class="form-row flex-row">
+                  <input type="text" id="habit-name" placeholder="Ex: Exercitar por 30 min, Ler 10 páginas..." required />
+                  <button type="submit" class="btn btn-primary">Adicionar</button>
+                  <button type="button" id="btn-cancel-habit" class="btn btn-secondary">Cancelar</button>
+                </div>
+              </form>
+
+              <!-- Habits Container -->
+              <div class="habits-header-days">
+                <div class="habit-col-name">Hábito</div>
+                <div class="habit-days-labels" id="habit-days-header">
+                  <!-- Generated dynamically for past 7 days -->
+                </div>
+                <div class="habit-col-streak">Streak</div>
+              </div>
+              <div class="habits-list" id="habits-list-container">
+                <!-- Habits will be rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Tab: Notes -->
+            <div class="tab-content" id="tab-notes">
+              <div class="notes-layout">
+                
+                <!-- Notes Sidebar (List) -->
+                <div class="notes-sidebar">
+                  <div class="widget-header flex-column gap-2">
+                    <button id="btn-new-note" class="btn btn-primary w-100">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      <span>Nova Nota</span>
+                    </button>
+                  </div>
+                  <div class="notes-list" id="notes-list-container">
+                    <!-- Note list items will be rendered dynamically -->
+                  </div>
+                </div>
+
+                <!-- Notes Editor & Preview -->
+                <div class="notes-editor-container" id="note-editor-pane">
+                  <div class="note-editor-header">
+                    <input type="text" id="note-title-input" placeholder="Título da Nota" />
+                    <div class="note-editor-actions">
+                      <button id="btn-toggle-preview" class="btn btn-secondary">Preview</button>
+                      <button id="btn-delete-note" class="btn btn-danger-icon" title="Excluir Nota">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="note-body-wrapper">
+                    <textarea id="note-body-input" placeholder="Escreva sua nota aqui... Use Markdown se desejar (# Título, - Item, etc.)"></textarea>
+                    <div id="note-body-preview" class="note-preview hidden"></div>
+                  </div>
+                </div>
+
+                <!-- Empty State for Notes -->
+                <div class="notes-empty-state" id="note-empty-pane">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <h3>Nenhuma nota selecionada</h3>
+                  <p>Selecione uma nota existente na barra lateral ou crie uma nova para começar a editar.</p>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </section>
+      </main>
+
+      <!-- Search Modal -->
+      <div id="search-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>🔍 Buscar</h3>
+            <button id="btn-close-search-modal" class="btn-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <input type="text" id="search-input" placeholder="Buscar em tarefas e notas..." autocomplete="off" />
+            <div id="search-results" class="search-results"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup & Restore Modal -->
+      <div id="backup-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Backup e Restauração</h3>
+            <button id="btn-close-backup-modal" class="btn-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Exporte suas tarefas, hábitos, notas e registros de humor em um arquivo <strong>.json</strong>, ou importe um backup salvo anteriormente.</p>
+            <button id="btn-export-data" class="btn btn-primary w-100">⬇️ Exportar Dados</button>
+            <div class="form-row">
+              <label for="import-file-input">Importar backup</label>
+              <input type="file" id="import-file-input" accept="application/json" />
+            </div>
+            <p class="api-help-text">⚠️ Importar substitui completamente os dados atuais deste navegador. Essa ação não pode ser desfeita — exporte um backup antes, se tiver dúvida.</p>
+
+            <hr class="modal-divider" />
+
+            <p><strong>Backup automático</strong> — escolha um arquivo uma vez e o Gênesis o mantém atualizado sozinho, sem pedir de novo.</p>
+            <button id="btn-enable-auto-backup" class="btn btn-secondary w-100">🔄 Ativar Backup Automático</button>
+            <p id="auto-backup-status" class="api-help-text"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Calendar Sync Modal -->
+      <div id="calendar-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Conectar Google Agenda</h3>
+            <button id="btn-close-calendar-modal" class="btn-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Insira o <strong>Client ID OAuth</strong> do Google Cloud para sincronizar suas tarefas com prazo direto no Google Agenda.</p>
+            <div class="form-row">
+              <label for="google-client-id-input">Google OAuth Client ID</label>
+              <input type="text" id="google-client-id-input" placeholder="xxxxxxxx.apps.googleusercontent.com" />
+            </div>
+            <p class="api-help-text">O Client ID fica salvo apenas no seu navegador. A conexão em si usa o login OAuth oficial do Google — o Gênesis nunca vê sua senha.</p>
+            <div id="calendar-status" class="report-highlight" style="display:none;"></div>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-save-google-client-id" class="btn btn-secondary">Salvar Client ID</button>
+            <button id="btn-connect-google-calendar" class="btn btn-primary">Conectar e Sincronizar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Report Modal -->
+      <div id="report-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>📊 Relatório Semanal</h3>
+            <button id="btn-close-report-modal" class="btn-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body" id="report-modal-body">
+            <!-- Report content rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- API Key Modal Configuration -->
+      <div id="api-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Configurar API da Groq</h3>
+            <button id="btn-close-modal" class="btn-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Insira sua <strong>Groq API Key</strong> para ativar as respostas de IA inteligentes e em tempo real do Gênesis. Gere uma chave gratuita em <strong>console.groq.com/keys</strong>.</p>
+            <div class="form-row">
+              <label for="api-key-input">Groq API Key</label>
+              <input type="password" id="api-key-input" placeholder="gsk_..." />
+            </div>
+            <p class="api-help-text">Sua chave é salva localmente apenas no seu navegador e nunca é enviada para outros servidores que não sejam a própria API oficial da Groq.</p>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-remove-api-key" class="btn btn-danger">Remover Chave</button>
+            <button id="btn-save-api-key" class="btn btn-primary">Salvar Chave</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
