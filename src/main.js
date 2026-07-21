@@ -1484,16 +1484,24 @@ const MAX_TOOL_ROUNDS = 5;
 // Call AI (Fetch Groq API with function calling, or fall back to mock responses).
 // Runs a full agentic loop: the model can request tools across multiple
 // rounds (not just one shot) until it's ready to answer in plain text.
+// Returns { text, actions } — `actions` is a compact log of the tools this
+// turn actually executed, persisted on the chat message so future turns can
+// see what already happened (raw tool_call messages can't be replayed:
+// slicing the history would orphan them and the API rejects that).
 async function getAgentResponse(userMessage) {
   if (!state.apiKey) {
-    return simulateMockResponse(userMessage);
+    return { text: simulateMockResponse(userMessage), actions: [] };
   }
+
+  const actionLog = [];
 
   try {
     const systemMessage = { role: 'system', content: buildSystemInstruction() };
     const historyMessages = state.chatHistory.slice(-10).map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'assistant',
-      content: msg.text
+      content: msg.sender === 'agent' && Array.isArray(msg.actions) && msg.actions.length > 0
+        ? `${msg.text}\n\n[Ações que executei neste turno: ${msg.actions.join('; ')}]`
+        : msg.text
     }));
 
     let messages = [systemMessage, ...historyMessages];
@@ -1509,8 +1517,9 @@ async function getAgentResponse(userMessage) {
         if (turnUndoStack.length > 0) lastActionUndoStack = turnUndoStack;
         const summary = formatActionSummary(executedToolNames);
         const text = message?.content || '';
-        if (summary && text) return `${summary}\n\n${text}`;
-        return summary || text || 'Desculpe, não consegui gerar uma resposta agora.';
+        const finalText = (summary && text) ? `${summary}\n\n${text}`
+          : (summary || text || 'Desculpe, não consegui gerar uma resposta agora.');
+        return { text: finalText, actions: actionLog };
       }
 
       messages.push(message);
@@ -1525,6 +1534,7 @@ async function getAgentResponse(userMessage) {
           const description = describeDestructiveAction(tc.function.name, args);
           const confirmed = description ? confirm(`A IA quer ${description}. Confirmar?`) : false;
           if (!confirmed) {
+            actionLog.push(`${tc.function.name}: cancelada — o usuário não confirmou`);
             messages.push({
               role: 'tool',
               tool_call_id: tc.id,
@@ -1538,6 +1548,7 @@ async function getAgentResponse(userMessage) {
         if (result.status === 'ok') {
           executedToolNames.push(tc.function.name);
           if (result.undo) turnUndoStack.push(result.undo);
+          if (result.message) actionLog.push(`${tc.function.name}: ${result.message}`);
         }
         // The `undo` closure itself isn't meaningful to the model — strip it
         // before sending the result back as the tool's return value.
@@ -1548,10 +1559,16 @@ async function getAgentResponse(userMessage) {
 
     if (turnUndoStack.length > 0) lastActionUndoStack = turnUndoStack;
     const summary = formatActionSummary(executedToolNames);
-    return summary ? `${summary}\n\n(Muitas etapas nessa solicitação — se faltou algo, me chama de novo.)` : 'Não consegui concluir essa solicitação em tempo hábil.';
+    return {
+      text: summary ? `${summary}\n\n(Muitas etapas nessa solicitação — se faltou algo, me chama de novo.)` : 'Não consegui concluir essa solicitação em tempo hábil.',
+      actions: actionLog
+    };
   } catch (err) {
     console.error(err);
-    return `❌ **Erro de Conexão com a IA:** Não consegui conectar à API do Groq. Verifique sua conexão ou se a sua chave de API é válida.\n\n*Detalhes do Erro:* ${err.message}`;
+    return {
+      text: `❌ **Erro de Conexão com a IA:** Não consegui conectar à API do Groq. Verifique sua conexão ou se a sua chave de API é válida.\n\n*Detalhes do Erro:* ${err.message}`,
+      actions: actionLog
+    };
   }
 }
 
@@ -1609,12 +1626,15 @@ async function handleSendMessage(messageText) {
   // Hide typing indicator
   showTypingIndicator(false);
 
-  // Append agent message
-  state.chatHistory.push({
+  // Append agent message, carrying the executed-actions log so future turns
+  // can remind the model of what it already did (see getAgentResponse).
+  const agentMsg = {
     sender: 'agent',
-    text: agentResponse,
+    text: agentResponse.text,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  });
+  };
+  if (agentResponse.actions.length > 0) agentMsg.actions = agentResponse.actions;
+  state.chatHistory.push(agentMsg);
   saveChat();
 }
 
