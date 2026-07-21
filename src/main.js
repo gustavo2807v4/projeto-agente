@@ -496,7 +496,7 @@ function renderTasks() {
       <div class="task-item-left">
         <div class="custom-checkbox ${task.completed ? 'checked' : ''}" data-id="${task.id}"></div>
         <div class="task-details">
-          <span class="task-title">${task.title}</span>
+          <span class="task-title">${escapeHtml(task.title)}</span>
           <div class="task-meta">
             <span class="task-priority-badge priority-${task.priority}">${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}</span>
             ${task.due ? `<span class="task-due-date">📅 ${formattedDate}</span>` : ''}
@@ -612,7 +612,7 @@ function renderHabits() {
 
     item.innerHTML = `
       <div class="habit-info">
-        <span class="habit-name">${habit.name}</span>
+        <span class="habit-name">${escapeHtml(habit.name)}</span>
         <span class="habit-rate">Últimos 7 dias: ${completionPercentage}%</span>
       </div>
       <div class="habit-days">
@@ -677,8 +677,8 @@ function renderNotes() {
     const formattedDate = new Date(note.updatedAt).toLocaleDateString('pt-BR', {day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit'});
 
     item.innerHTML = `
-      <span class="note-item-title">${note.title || 'Sem Título'}</span>
-      <span class="note-item-excerpt">${plainExcerpt}</span>
+      <span class="note-item-title">${escapeHtml(note.title || 'Sem Título')}</span>
+      <span class="note-item-excerpt">${escapeHtml(plainExcerpt)}</span>
       <span class="note-item-date">${formattedDate}</span>
     `;
 
@@ -1328,7 +1328,20 @@ HUMOR: ${moodText}
 NOTAS RECENTES (id|título; use buscar_notas p/ conteúdo):
 ${recentNotesText}
 
-REGRAS: use a ferramenta certa pelo id sempre que o usuário pedir pra criar/concluir/reagendar/editar/marcar/remover algo — não apenas explique. Se o id não for óbvio, pergunte antes de agir. Após executar, confirme curto, sem repetir a msg técnica. Leve o humor em conta no tom sem exagerar. Markdown só se ajudar.`;
+QUANDO USAR FERRAMENTAS: apenas quando o usuário pedir claramente uma ação (criar/concluir/reagendar/editar/marcar/remover/registrar) ou confirmar uma sugestão que você fez. Use pelo id — não apenas explique.
+
+QUANDO NÃO USAR FERRAMENTAS (responda só com texto):
+- Saudações, agradecimentos e conversa casual ("bom dia", "oi", "valeu", "como você está").
+- Perguntas sobre os dados ("o que tenho pra hoje?", "como estão meus hábitos?") — responda usando o contexto acima.
+- Desabafos ou comentários soltos ("tô cansado", "preciso me organizar melhor") — converse; se achar útil, SUGIRA uma ação e espere confirmação.
+- Menção casual a algo a fazer ("qualquer hora preciso lavar o carro") NÃO é pedido — pergunte se quer que registre antes de criar qualquer coisa.
+
+EXEMPLOS:
+- "bom dia" → cumprimente e, no máximo, resuma o dia. Nenhuma ferramenta.
+- "cria uma tarefa de pagar o boleto amanhã" → criar_tarefa.
+- "acho que devia beber mais água" → "Quer que eu crie o hábito 'Beber água'?" — só crie se confirmar.
+
+REGRAS GERAIS: se a intenção ou o id for ambíguo, pergunte antes de agir. Nunca crie itens que o usuário não pediu. Após executar, confirme curto, sem repetir a msg técnica. Leve o humor em conta no tom sem exagerar. Markdown só se ajudar.`;
 }
 
 // Groq/Llama tool calling occasionally "leaks" the function call as plain
@@ -1488,7 +1501,7 @@ async function getAgentResponse(userMessage) {
     const turnUndoStack = [];
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const response = await callGroq({ messages, tools: AGENT_TOOLS, tool_choice: 'auto' });
+      const response = await callGroq({ messages, tools: AGENT_TOOLS, tool_choice: 'auto', temperature: 0.2 });
       const message = response.choices?.[0]?.message;
       const toolCalls = message?.tool_calls || [];
 
@@ -2608,7 +2621,7 @@ function renderSearchResults(query) {
   if (matchingTasks.length > 0) {
     html += '<div class="search-group-label">Tarefas</div>';
     html += matchingTasks.map(t =>
-      `<div class="search-result-item" data-type="task" data-id="${t.id}">${t.completed ? '✅' : '⬜'} ${t.title}</div>`
+      `<div class="search-result-item" data-type="task" data-id="${t.id}">${t.completed ? '✅' : '⬜'} ${escapeHtml(t.title)}</div>`
     ).join('');
   }
   if (noteMatches.length > 0) {
