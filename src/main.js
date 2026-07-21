@@ -33,7 +33,7 @@ document.documentElement.setAttribute('data-theme', localStorage.getItem(STATE_K
 
 // Tries models in order — if one is deprecated/unavailable on the account,
 // we fall back instead of failing outright.
-const GROQ_MODEL_CANDIDATES = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const GROQ_MODEL_CANDIDATES = ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 
 let state = {
   tasks: [],
