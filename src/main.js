@@ -12,6 +12,7 @@ import { renderHabits, renderHabitsHeader, initHabitsUI } from './features/habit
 import { renderNotes, initNotesUI } from './features/notes.js';
 import { renderMoodTracker, initMoodUI } from './features/mood.js';
 import { renderChat, initChatUI } from './agent/chat.js';
+import { loadProfile, initProfileSync } from './agent/profile.js';
 import { initReportUI } from './features/report.js';
 import { initQuickCapture } from './features/capture.js';
 import {
@@ -82,6 +83,9 @@ function initEventListeners() {
 
 async function init() {
   await loadState();
+  // Perfil durável do agente: precisa estar em memória antes do primeiro
+  // system prompt, que o lê de forma síncrona.
+  await loadProfile();
   initClock();
   updateAgentStatus();
   updateNotificationButtonState();
@@ -106,6 +110,8 @@ async function init() {
     renderMoodTracker();
     updateStats();
   });
+  // Perfil tem doc próprio no Firestore e listener próprio de auth.
+  initProfileSync();
   initTheme();
   initQuickCapture();
 

@@ -9,6 +9,7 @@ import { MOOD_LABELS, getMoodTrendForLastDays } from '../features/mood.js';
 import { chatCompletion as callGroq } from './providers/groq.js';
 import { chatCompletion as callStrong, hasStrongKey } from './providers/strong.js';
 import { pickModel, PROVIDERS } from './router.js';
+import { buildProfileContext } from './profile.js';
 import { AGENT_TOOLS, DESTRUCTIVE_TOOLS, describeDestructiveAction, executeFunctionCall } from './tools.js';
 import { formatActionSummary, lastActionUndoStack, setLastActionUndoStack, undoLastAction } from './memory.js';
 
@@ -123,8 +124,13 @@ function buildSystemInstruction() {
   const now = new Date();
   const weekdayShort = now.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 
-  return `Você é o Gênesis, assistente pessoal de produtividade. Direto, conciso, age em vez de dar sermão — sem enrolação motivacional, sem parabenização vazia. Responda em português.
+  // Perfil durável (compacto, com teto próprio). Vazio quando o usuário
+  // ainda não escreveu nada e o agente não memorizou nada.
+  const profileContext = buildProfileContext();
+  const profileBlock = profileContext ? `\n${profileContext}\n` : '';
 
+  return `Você é o Gênesis, assistente pessoal de produtividade. Direto, conciso, age em vez de dar sermão — sem enrolação motivacional, sem parabenização vazia. Responda em português.
+${profileBlock}
 AGORA: ${weekdayShort} ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
 
 TAREFAS (id|título|prioridade|prazo|recorrência; VENCIDA: = atrasada):
