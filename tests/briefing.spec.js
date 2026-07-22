@@ -60,7 +60,7 @@ test.describe('buildBriefing', () => {
     });
 
     const tasksHighlight = b.highlights.find(h => h.type === 'tasks_today');
-    expect(tasksHighlight.text).toBe('3 tarefas pendentes para hoje (1 atrasada).');
+    expect(tasksHighlight.text).toBe('Hoje você tem 3 tarefas (1 atrasada).');
   });
 
   test('só atrasadas, sem nada para hoje', () => {
@@ -237,7 +237,7 @@ test.describe('buildBriefing', () => {
     };
 
     expect(buildBriefing(input).rawText).toBe(buildBriefing(input).rawText);
-    expect(buildBriefing(input).rawText).toContain('2 tarefas pendentes para hoje (1 atrasada).');
+    expect(buildBriefing(input).rawText).toContain('Hoje você tem 2 tarefas (1 atrasada).');
   });
 
   test('chamada sem argumentos não quebra', () => {

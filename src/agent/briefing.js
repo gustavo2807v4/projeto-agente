@@ -66,13 +66,13 @@ function buildTasksHighlight({ overdue, today }) {
   if (today.length > 0 && overdue.length > 0) {
     return {
       type: 'tasks_today',
-      text: `${total} ${plural(total, 'tarefa', 'tarefas')} ${plural(total, 'pendente', 'pendentes')} para hoje (${overdue.length} ${plural(overdue.length, 'atrasada', 'atrasadas')}).`
+      text: `Hoje você tem ${total} ${plural(total, 'tarefa', 'tarefas')} (${overdue.length} ${plural(overdue.length, 'atrasada', 'atrasadas')}).`
     };
   }
   if (today.length > 0) {
     return {
       type: 'tasks_today',
-      text: `${today.length} ${plural(today.length, 'tarefa', 'tarefas')} para hoje.`
+      text: `Hoje você tem ${today.length} ${plural(today.length, 'tarefa', 'tarefas')}.`
     };
   }
   return {
