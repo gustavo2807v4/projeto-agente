@@ -48,6 +48,14 @@ import {
   buildHighlightedSnippet,
   initNotesUI
 } from './features/notes.js';
+import {
+  MOOD_EMOJIS,
+  MOOD_LABELS,
+  saveMoods,
+  renderMoodTracker,
+  getMoodTrendForLastDays,
+  initMoodUI
+} from './features/mood.js';
 import { callGroq } from './agent/groq.js';
 import { queueCloudPush, initCloudSync } from './integrations/cloudSync.js';
 
@@ -55,15 +63,9 @@ import { queueCloudPush, initCloudSync } from './integrations/cloudSync.js';
 // flash of the wrong theme while the page loads.
 document.documentElement.setAttribute('data-theme', localStorage.getItem(STATE_KEYS.THEME) || 'dark');
 
-// Save helpers — the IndexedDB write happens in the background (fire-and-
-// forget with error logging); render + stats update immediately from the
+// Save helper — the IndexedDB write happens in the background (fire-and-
+// forget with error logging); render happens immediately from the
 // in-memory state so the UI never waits on the write.
-function saveMoods() {
-  localDb.saveMoods(state.moods).catch(err => console.error('Erro ao salvar humor:', err));
-  renderMoodTracker();
-  queueCloudPush();
-}
-
 function saveChat() {
   localDb.saveChatHistory(state.chatHistory).catch(err => console.error('Erro ao salvar conversa:', err));
   renderChat();
@@ -72,15 +74,6 @@ function saveChat() {
 // ==========================================================================
 // 4. RENDERING & DATA DISPLAY
 // ==========================================================================
-
-// Highlights today's selected mood button, if any
-function renderMoodTracker() {
-  const todayStr = getLocalDateString(0);
-  const selected = state.moods[todayStr];
-  document.querySelectorAll('.mood-btn').forEach(btn => {
-    btn.classList.toggle('active', Number(btn.getAttribute('data-mood')) === selected);
-  });
-}
 
 // Render Chat Messages
 function renderChat() {
@@ -859,18 +852,6 @@ async function handleSendMessage(messageText) {
 // ==========================================================================
 // 6. WEEKLY REPORT
 // ==========================================================================
-
-const MOOD_EMOJIS = { 1: '😞', 2: '😕', 3: '😐', 4: '🙂', 5: '🤩' };
-const MOOD_LABELS = { 1: 'péssimo', 2: 'ruim', 3: 'neutro', 4: 'bom', 5: 'ótimo' };
-
-function getMoodTrendForLastDays(days) {
-  const entries = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const dateStr = getLocalDateString(i);
-    if (state.moods[dateStr] !== undefined) entries.push(state.moods[dateStr]);
-  }
-  return entries;
-}
 
 const WEEKDAY_LABELS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MIN_CORRELATION_SAMPLE_DAYS = 5;
@@ -1947,14 +1928,8 @@ function initEventListeners() {
     toggleNotifications();
   });
 
-  // Mood Check-in
-  document.querySelectorAll('.mood-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const mood = Number(e.currentTarget.getAttribute('data-mood'));
-      state.moods[getLocalDateString(0)] = mood;
-      saveMoods();
-    });
-  });
+  // Mood check-in buttons — wired by features/mood.js
+  initMoodUI();
 
   // Google Calendar Modal
   const calendarModal = document.getElementById('calendar-modal');
