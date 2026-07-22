@@ -180,3 +180,92 @@ test('buscar_historico sem resultado devolve lista vazia, não erro', async ({ p
   expect(payload.status).toBe('ok');
   expect(payload.results).toEqual([]);
 });
+
+test('perfil core editado pelo usuário entra no system prompt e persiste', async ({ page }) => {
+  await page.click('#btn-memory');
+  await page.fill('#memory-core-input', 'Fundador de uma agência de automação. Meta do trimestre: fechar 5 contratos recorrentes.');
+  await page.click('#btn-save-memory-core');
+  await page.click('#btn-close-memory-modal');
+
+  await page.reload({ waitUntil: 'networkidle' });
+  const payloads = await mockGroq(page, [textReply('Oi!')]);
+
+  await page.fill('#chat-input', 'oi');
+  await page.click('#btn-send');
+  await expect(page.locator('.chat-msg.agent', { hasText: 'Oi!' })).toBeVisible({ timeout: 10000 });
+
+  const systemPrompt = payloads[0].messages[0].content;
+  expect(systemPrompt).toContain('PERFIL DO USUÁRIO');
+  expect(systemPrompt).toContain('agência de automação');
+
+  // E continua visível na view para inspeção
+  await page.click('#btn-memory');
+  await expect(page.locator('#memory-core-input')).toHaveValue(/agência de automação/);
+});
+
+test('usuário pode apagar um fato aprendido e ele some do prompt', async ({ page }) => {
+  const payloads = await mockGroq(page, [
+    toolReply('lembrar_fato', { fato: 'Mora em Belo Horizonte', categoria: 'contexto' }),
+    textReply('Ok.'),
+    textReply('Oi!')
+  ]);
+
+  await page.fill('#chat-input', 'moro em BH');
+  await page.click('#btn-send');
+  await expect(page.locator('.chat-msg.agent', { hasText: 'Ok.' })).toBeVisible({ timeout: 10000 });
+
+  await page.click('#btn-memory');
+  await expect(page.locator('.memory-fact-item')).toHaveCount(1);
+  await expect(page.locator('.memory-fact-item')).toContainText('Belo Horizonte');
+
+  await page.click('.memory-fact-item .btn-danger-icon');
+  await expect(page.locator('.memory-fact-item')).toHaveCount(0);
+  await page.click('#btn-close-memory-modal');
+
+  // Some do prompt do turno seguinte
+  await page.fill('#chat-input', 'oi');
+  await page.click('#btn-send');
+  await expect(page.locator('.chat-msg.agent', { hasText: 'Oi!' })).toBeVisible({ timeout: 10000 });
+  expect(payloads[payloads.length - 1].messages[0].content).not.toContain('Belo Horizonte');
+
+  // E continua apagado após reload
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.click('#btn-memory');
+  await expect(page.locator('.memory-fact-item')).toHaveCount(0);
+});
+
+test('o bloco de perfil respeita o teto de caracteres com a memória cheia', async ({ page }) => {
+  // Enche o perfil no limite: core acima do teto + 50 fatos distintos entre si
+  // (textos parecidos seriam consolidados pelo dedup, não empilhados).
+  await page.evaluate(async (chars) => {
+    const { saveCoreProfile, rememberFact } = await import('/src/agent/profile.js');
+    await saveCoreProfile('C'.repeat(chars + 200));
+
+    // Tokens únicos dominam cada texto para que o dedup fuzzy não os
+    // consolide — aqui queremos exercitar o teto, não a consolidação.
+    for (let i = 0; i < 50; i++) {
+      const token = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      await rememberFact(`Projeto ${token} com escopo ${token.split('').reverse().join('')}`, 'contexto');
+    }
+  }, 600);
+
+  const built = await page.evaluate(async () => {
+    const { buildProfileContext, PROFILE_CONTEXT_BUDGET, getProfile } = await import('/src/agent/profile.js');
+    const block = buildProfileContext();
+    return {
+      length: block.length,
+      budget: PROFILE_CONTEXT_BUDGET,
+      storedFacts: getProfile().learned.length,
+      linesInBlock: block.split('\n').filter((l) => l.startsWith('contexto|')).length,
+      block
+    };
+  });
+
+  expect(built.storedFacts).toBe(50);
+  // Cabe no teto e trunca de verdade (nem todos os fatos entram no prompt)
+  expect(built.length).toBeLessThanOrEqual(built.budget);
+  expect(built.linesInBlock).toBeGreaterThan(0);
+  expect(built.linesInBlock).toBeLessThan(built.storedFacts);
+  expect(built.block).toContain('PERFIL DO USUÁRIO');
+  expect(built.block).toContain('FATOS APRENDIDOS');
+});

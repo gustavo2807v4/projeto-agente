@@ -174,3 +174,36 @@ export function escapeHtml(str) {
 export function stripDiacritics(str) {
   return str.normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
+
+// Palavras de ligação não discriminam nada — só geram ruído em busca e em
+// comparação de similaridade.
+export const PT_STOPWORDS = new Set([
+  'de', 'do', 'da', 'dos', 'das', 'para', 'pra', 'por', 'com', 'que', 'uma',
+  'uns', 'umas', 'nos', 'nas', 'sobre', 'pelo', 'pela', 'meu', 'minha', 'seu',
+  'sua', 'ate', 'como', 'quando', 'onde', 'qual', 'quais', 'mais', 'sem'
+]);
+
+const MIN_TOKEN_LENGTH = 3;
+
+// Palavras significativas de um texto, sem acento e sem stopwords — base
+// tanto da busca por termos quanto da comparação de similaridade.
+export function tokenizeWords(text) {
+  return stripDiacritics((text || '').toLowerCase())
+    .split(/[^a-z0-9]+/)
+    .filter(t => t.length >= MIN_TOKEN_LENGTH && !PT_STOPWORDS.has(t));
+}
+
+// Coeficiente de Dice sobre os conjuntos de palavras (0 = nada em comum,
+// 1 = mesmas palavras). Previsível para frases curtas — ao contrário da
+// busca fuzzy, que fatia padrões longos e casa por trechos compartilhados.
+export function wordSimilarity(a, b) {
+  const setA = new Set(tokenizeWords(a));
+  const setB = new Set(tokenizeWords(b));
+  if (setA.size === 0 || setB.size === 0) return 0;
+
+  let shared = 0;
+  for (const token of setA) {
+    if (setB.has(token)) shared++;
+  }
+  return (2 * shared) / (setA.size + setB.size);
+}

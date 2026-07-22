@@ -13,6 +13,7 @@ import { renderNotes, initNotesUI } from './features/notes.js';
 import { renderMoodTracker, initMoodUI } from './features/mood.js';
 import { renderChat, initChatUI } from './agent/chat.js';
 import { loadProfile, initProfileSync } from './agent/profile.js';
+import { initProfileUI, renderProfileView } from './features/profile.js';
 import { initReportUI } from './features/report.js';
 import { initQuickCapture } from './features/capture.js';
 import {
@@ -71,6 +72,9 @@ function initEventListeners() {
   // Weekly report modal — wired by features/report.js
   initReportUI();
 
+  // Memory modal (durable profile) — wired by features/profile.js
+  initProfileUI();
+
   // Task form, toggles and filters — wired by features/tasks.js
   initTasksUI();
 
@@ -110,8 +114,9 @@ async function init() {
     renderMoodTracker();
     updateStats();
   });
-  // Perfil tem doc próprio no Firestore e listener próprio de auth.
-  initProfileSync();
+  // Perfil tem doc próprio no Firestore e listener próprio de auth; o hook
+  // só re-renderiza a view de memória se ela estiver aberta.
+  initProfileSync(renderProfileView);
   initTheme();
   initQuickCapture();
 

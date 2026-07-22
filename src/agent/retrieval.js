@@ -10,6 +10,7 @@
 
 import Fuse from 'fuse.js';
 import { state } from '../state.js';
+import { tokenizeWords } from '../utils.js';
 import { searchNotesFuzzy } from '../features/notes.js';
 import { MOOD_LABELS } from '../features/mood.js';
 
@@ -78,24 +79,12 @@ function searchNotesForHistory(query) {
   }));
 }
 
-// Palavras curtas//de ligação não ajudam a discriminar e só geram ruído.
-const STOPWORDS = new Set([
-  'de', 'do', 'da', 'dos', 'das', 'para', 'pra', 'por', 'com', 'que', 'uma',
-  'uns', 'umas', 'nos', 'nas', 'sobre', 'pelo', 'pela', 'meu', 'minha', 'seu',
-  'sua', 'ate', 'ate', 'como', 'quando', 'onde', 'qual', 'quais'
-]);
-const MIN_TOKEN_LENGTH = 3;
-
 // O modelo manda palavras-chave ("migrar site servidor"), e o Fuse casa a
 // frase inteira como UM padrão — o que falha quando os termos aparecem
 // separados no alvo. Por isso buscamos a frase completa E cada termo, e
 // consolidamos pelo melhor score de cada item.
 function buildSearchTerms(query) {
-  const tokens = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(t => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t));
-  return [query, ...tokens];
+  return [query, ...tokenizeWords(query)];
 }
 
 // Busca nos três tipos e devolve os melhores resultados no geral (score menor

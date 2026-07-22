@@ -1581,6 +1581,66 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
   background: var(--success-glow);
 }
 
+/* Memory (durable profile) modal */
+.modal-body textarea {
+  background: var(--input-field-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.modal-body textarea:focus {
+  outline: none;
+  border-color: var(--accent-solid);
+}
+
+.memory-facts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.memory-fact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--tint-2);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+}
+
+.memory-fact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.memory-fact-text {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.memory-fact-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.memory-fact-item .btn-danger-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
 /* Sync / Account badge */
 .sync-user-badge {
   display: flex;

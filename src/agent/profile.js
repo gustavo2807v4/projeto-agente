@@ -10,8 +10,8 @@
    login; autenticado, também escreve um doc separado no Firestore
    (users/{uid}/meta/profile) — não encosta no doc de dados existente. */
 
-import Fuse from 'fuse.js';
 import * as localDb from '../db.js';
+import { wordSimilarity } from '../utils.js';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -27,9 +27,11 @@ export const PROFILE_CONTEXT_BUDGET = 1500;
 
 export const FACT_CATEGORIES = ['negocio', 'preferencia', 'padrao', 'contexto'];
 
-// Acima deste score do Fuse os fatos são considerados diferentes; abaixo,
-// o novo fato ATUALIZA o existente em vez de empilhar mais uma linha.
-const DEDUP_SCORE_THRESHOLD = 0.35;
+// A partir desta similaridade de palavras dois fatos são considerados "o
+// mesmo fato": o novo ATUALIZA o existente em vez de empilhar outra linha.
+// Ex.: "Trabalha como dev freelancer" vs "...freelancer full-stack" (~0.86)
+// consolida; "Projeto A com escopo X" vs "Projeto B com escopo Y" (~0.5) não.
+const DEDUP_SIMILARITY_THRESHOLD = 0.6;
 
 const SETTING_KEY = 'agentProfile';
 
@@ -124,19 +126,21 @@ export async function deleteLearnedFact(id) {
 }
 
 // Procura um fato existente que diga essencialmente a mesma coisa, pra
-// atualizar em vez de empilhar. Busca fuzzy pelos mesmos motivos da busca de
-// notas: o modelo raramente repete a frase com as mesmas palavras.
+// atualizar em vez de empilhar — o modelo raramente repete a frase com as
+// mesmas palavras exatas.
 function findSimilarFact(text) {
-  if (profile.learned.length === 0) return null;
-  const fuse = new Fuse(profile.learned, {
-    keys: ['text'],
-    includeScore: true,
-    threshold: DEDUP_SCORE_THRESHOLD,
-    ignoreLocation: true,
-    minMatchCharLength: 3
-  });
-  const hit = fuse.search(text)[0];
-  return hit ? hit.item : null;
+  let best = null;
+  let bestScore = 0;
+
+  for (const fact of profile.learned) {
+    const score = wordSimilarity(text, fact.text);
+    if (score > bestScore) {
+      bestScore = score;
+      best = fact;
+    }
+  }
+
+  return bestScore >= DEDUP_SIMILARITY_THRESHOLD ? best : null;
 }
 
 // Lógica da tool lembrar_fato. Retorna { status, message, undo? } no mesmo
@@ -195,29 +199,31 @@ export async function rememberFact(rawText, rawCategory) {
 // teto: o core é truncado e os fatos entram do mais recente pro mais antigo
 // até o budget acabar. Sem perfil, devolve string vazia e o prompt fica
 // idêntico ao que era antes desta camada existir.
+const CORE_HEADER = 'PERFIL DO USUÁRIO (definido por ele; não invente nem contradiga):';
+const FACTS_HEADER = 'FATOS APRENDIDOS (categoria|fato):';
+const PART_SEPARATOR = '\n\n';
+
 export function buildProfileContext() {
   const parts = [];
-  let budget = PROFILE_CONTEXT_BUDGET;
 
-  const core = profile.core.trim();
-  if (core) {
-    const trimmed = core.slice(0, MAX_CORE_CHARS);
-    parts.push(`PERFIL DO USUÁRIO (definido por ele; não invente nem contradiga):\n${trimmed}`);
-    budget -= trimmed.length + 60;
-  }
+  const core = profile.core.trim().slice(0, MAX_CORE_CHARS);
+  if (core) parts.push(`${CORE_HEADER}\n${core}`);
 
-  const facts = [...profile.learned].sort((a, b) => b.updatedAt - a.updatedAt);
+  // O que sobra do teto depois do core, já descontando os cabeçalhos e o
+  // separador — contagem exata, para o bloco nunca estourar o budget.
+  const usedByCore = parts.length > 0 ? parts[0].length + PART_SEPARATOR.length : 0;
+  let remaining = PROFILE_CONTEXT_BUDGET - usedByCore - FACTS_HEADER.length - 1;
+
   const lines = [];
-  for (const fact of facts) {
+  for (const fact of [...profile.learned].sort((a, b) => b.updatedAt - a.updatedAt)) {
     const line = `${fact.category}|${fact.text}`;
-    if (line.length + 1 > budget) break;
+    const cost = line.length + (lines.length > 0 ? 1 : 0);
+    if (cost > remaining) break;
     lines.push(line);
-    budget -= line.length + 1;
+    remaining -= cost;
   }
 
-  if (lines.length > 0) {
-    parts.push(`FATOS APRENDIDOS (categoria|fato):\n${lines.join('\n')}`);
-  }
+  if (lines.length > 0) parts.push(`${FACTS_HEADER}\n${lines.join('\n')}`);
 
-  return parts.join('\n\n');
+  return parts.join(PART_SEPARATOR);
 }
