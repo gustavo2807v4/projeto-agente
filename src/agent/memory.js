@@ -19,7 +19,8 @@ const ACTION_SUMMARY_LABELS = {
   deletar_habito: n => `${n} hábito${n > 1 ? 's' : ''} excluído${n > 1 ? 's' : ''}`,
   criar_nota: n => `${n} nota${n > 1 ? 's' : ''} criada${n > 1 ? 's' : ''}`,
   deletar_nota: n => `${n} nota${n > 1 ? 's' : ''} excluída${n > 1 ? 's' : ''}`,
-  registrar_humor: () => 'humor registrado'
+  registrar_humor: () => 'humor registrado',
+  lembrar_fato: n => `${n} fato${n > 1 ? 's' : ''} memorizado${n > 1 ? 's' : ''}`
 };
 
 export function formatActionSummary(executedToolNames) {

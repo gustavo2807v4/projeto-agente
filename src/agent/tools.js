@@ -9,6 +9,7 @@ import { saveHabits } from '../features/habits.js';
 import { saveNotes, searchNotes } from '../features/notes.js';
 import { saveMoods, MOOD_LABELS } from '../features/mood.js';
 import { deleteGoogleCalendarEvent, updateGoogleCalendarEventDate } from '../integrations/googleCalendar.js';
+import { rememberFact } from './profile.js';
 
 // Declares the actions the model is allowed to trigger directly on the user's workspace,
 // in OpenAI-compatible tool-calling format (used by Groq's chat completions API).
@@ -172,6 +173,21 @@ export const AGENT_TOOLS = [
         type: 'object',
         properties: { query: { type: 'string', description: 'Termo de busca' } },
         required: ['query']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'lembrar_fato',
+      description: 'Guarda na memória de longo prazo um fato DURÁVEL sobre o usuário (objetivo, contexto de negócio, preferência de trabalho, padrão de comportamento). Use apenas para o que continuará verdadeiro daqui a meses — nunca para conversa passageira, estado do dia ou algo que já vira tarefa/nota/hábito.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fato: { type: 'string', description: 'O fato em uma frase curta e autocontida, na terceira pessoa (ex: "Trabalha como dev freelancer e fatura por projeto")' },
+          categoria: { type: 'string', enum: ['negocio', 'preferencia', 'padrao', 'contexto'], description: 'negocio=trabalho/empresa; preferencia=como gosta de trabalhar; padrao=comportamento recorrente observado; contexto=situação pessoal duradoura' }
+        },
+        required: ['fato']
       }
     }
   },
@@ -411,6 +427,9 @@ export async function executeFunctionCall(name, args) {
         message: `${matches.length} nota(s) encontrada(s).`,
         results: matches.map(n => ({ id: n.id, titulo: n.title, trecho: (n.body || '').slice(0, 200) }))
       };
+    }
+    case 'lembrar_fato': {
+      return rememberFact(args.fato, args.categoria);
     }
     case 'registrar_humor': {
       const date = args.data || getLocalDateString(0);
