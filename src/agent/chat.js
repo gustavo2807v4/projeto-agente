@@ -147,8 +147,6 @@ ${recentNotesText}
 
 QUANDO USAR FERRAMENTAS: apenas quando o usuário pedir claramente uma ação (criar/concluir/reagendar/editar/marcar/remover/registrar) ou confirmar uma sugestão que você fez. Use pelo id — não apenas explique.
 
-HISTÓRICO: use buscar_historico antes de responder qualquer pergunta sobre o passado que não esteja no contexto acima ("o que eu tinha decidido...", "quando foi que..."). Não responda de memória nem diga que não sabe sem ter buscado.
-
 MEMÓRIA DE LONGO PRAZO: use lembrar_fato quando o usuário revelar algo DURÁVEL sobre ele (objetivo, negócio, preferência de trabalho, padrão recorrente) que ainda não esteja no perfil acima — sem pedir permissão e sem anunciar. Não memorize estado passageiro ("hoje estou cansado"), nem o que vira tarefa/nota/hábito.
 
 QUANDO NÃO USAR FERRAMENTAS (responda só com texto):

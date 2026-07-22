@@ -122,17 +122,20 @@ function parseInlineMarkdown(text) {
 }
 
 // Calculate Habit Streak
-export function calculateStreak(history) {
+// `now` é injetável para permitir cálculo determinístico a partir de uma data
+// arbitrária (usado pelo briefing, que precisa ser puro). Sem argumento, o
+// comportamento é o de sempre: streak até hoje.
+export function calculateStreak(history, now = new Date()) {
   if (!history || Object.keys(history).length === 0) return 0;
 
   let streak = 0;
-  let checkDate = new Date();
+  let checkDate = new Date(now);
 
   const formatDate = (date) => formatDateLocal(date);
 
   let todayStr = formatDate(checkDate);
-  let yesterday = new Date();
-  yesterday.setDate(checkDate.getDate() - 1);
+  let yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
   let yesterdayStr = formatDate(yesterday);
 
   // If completed today
