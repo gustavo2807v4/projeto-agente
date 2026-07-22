@@ -66,7 +66,9 @@ function normalize(raw) {
   };
 }
 
-function getProfileDocRef(uid) {
+// Exportado para o leitor de briefing reusar o mesmo caminho — o doc do
+// perfil tem um dono só e a rota não deve ser reescrita em outro módulo.
+export function getProfileDocRef(uid) {
   return doc(db, 'users', uid, 'meta', 'profile');
 }
 
