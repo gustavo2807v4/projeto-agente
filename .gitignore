@@ -32,4 +32,4 @@ dist-ssr
 
 # Secrets / local config
 .env
-src/firebase.js
+.env.local
