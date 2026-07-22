@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore do Gênesis.
+//
+// O app é single-user por conta: cada pessoa só pode ler e escrever o próprio
+// documento e tudo que estiver abaixo dele. Como a config do Firebase é
+// pública (vai no bundle do cliente), ESTAS REGRAS são a única barreira real
+// entre os dados de um usuário e qualquer outro — nada aqui deve ser afrouxado
+// "temporariamente".
+//
+// Estrutura protegida:
+//   users/{uid}                 -> tarefas, hábitos, notas, humor (cloudSync)
+//   users/{uid}/meta/profile    -> perfil durável do agente (memória)
+//
+// Para aplicar: Firebase Console > Firestore Database > Regras, cole e publique.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Subcoleções (meta/profile e o que vier depois) herdam a mesma regra —
+      // permissão no documento pai NÃO cascateia sozinha no Firestore.
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Qualquer caminho fora de users/{uid} é negado por padrão: o Firestore
+    // recusa tudo que nenhuma regra permitiu explicitamente.
+  }
+}
