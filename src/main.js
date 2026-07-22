@@ -70,32 +70,12 @@ import {
 import { initVoiceInput } from './features/voice.js';
 import { checkAutoBackup, initBackupUI } from './features/backup.js';
 import { initSearchUI } from './features/search.js';
+import { initTheme } from './features/theme.js';
 import { queueCloudPush, initCloudSync } from './integrations/cloudSync.js';
 
 // Applied immediately at module load (before the rest of init) to avoid a
 // flash of the wrong theme while the page loads.
 document.documentElement.setAttribute('data-theme', localStorage.getItem(STATE_KEYS.THEME) || 'dark');
-
-// ==========================================================================
-// 13. THEME
-// ==========================================================================
-
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('theme-icon-dark').classList.toggle('hidden', theme === 'light');
-  document.getElementById('theme-icon-light').classList.toggle('hidden', theme !== 'light');
-}
-
-function initTheme() {
-  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
-
-  document.getElementById('btn-theme-toggle').addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'light' ? 'dark' : 'light';
-    localStorage.setItem(STATE_KEYS.THEME, next);
-    applyTheme(next);
-  });
-}
 
 // ==========================================================================
 // 15. UI EVENT LISTENERS & INITIALIZATION
