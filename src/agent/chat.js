@@ -7,6 +7,8 @@ import { state, getInitialChat, saveApiKey, saveAnthropicApiKey } from '../state
 import { parseMarkdown, calculateStreak, getLocalDateString } from '../utils.js';
 import { MOOD_LABELS, getMoodTrendForLastDays } from '../features/mood.js';
 import { chatCompletion as callGroq } from './providers/groq.js';
+import { chatCompletion as callStrong, hasStrongKey } from './providers/strong.js';
+import { pickModel, PROVIDERS } from './router.js';
 import { AGENT_TOOLS, DESTRUCTIVE_TOOLS, describeDestructiveAction, executeFunctionCall } from './tools.js';
 import { formatActionSummary, lastActionUndoStack, setLastActionUndoStack, undoLastAction } from './memory.js';
 
@@ -155,6 +157,29 @@ REGRAS GERAIS: se a intenção ou o id for ambíguo, pergunte antes de agir. Nun
 
 const MAX_TOOL_ROUNDS = 5;
 
+// Único ponto de despacho entre providers — chat.js não sabe qual é qual.
+// Se o modelo forte falhar por QUALQUER motivo (sem chave, rede, 4xx/5xx,
+// timeout, recusa), cai no Groq e loga o porquê. O app nunca fica sem
+// resposta por causa do roteamento.
+async function callModel(choice, body) {
+  if (choice.provider === PROVIDERS.STRONG) {
+    if (!hasStrongKey()) {
+      console.warn('[router] fallback → groq: chave do modelo forte não configurada');
+    } else {
+      try {
+        console.info(`[router] ${choice.provider} (${choice.reason})`);
+        return await callStrong(body);
+      } catch (err) {
+        console.warn(`[router] fallback → groq: ${err.message}`);
+      }
+    }
+  } else {
+    console.info(`[router] ${choice.provider} (${choice.reason})`);
+  }
+
+  return callGroq(body);
+}
+
 // Call AI (Fetch Groq API with function calling, or fall back to mock responses).
 // Runs a full agentic loop: the model can request tools across multiple
 // rounds (not just one shot) until it's ready to answer in plain text.
@@ -183,7 +208,10 @@ async function getAgentResponse(userMessage) {
     const turnUndoStack = [];
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const response = await callGroq({ messages, tools: AGENT_TOOLS, tool_choice: 'auto', temperature: 0.2 });
+      // Decisão por round (regra fixa, síncrona): permite o upgrade
+      // meio-de-loop quando uma tool de síntese já rodou neste turno.
+      const choice = pickModel({ mode: 'chat', messageText: userMessage, executedToolNames });
+      const response = await callModel(choice, { messages, tools: AGENT_TOOLS, tool_choice: 'auto', temperature: 0.2 });
       const message = response.choices?.[0]?.message;
       const toolCalls = message?.tool_calls || [];
 
