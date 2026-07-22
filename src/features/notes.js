@@ -101,12 +101,19 @@ export function searchNotesFuzzy(query) {
   const fuse = new Fuse(state.notes, {
     keys: ['title', 'body'],
     includeMatches: true,
+    // `score` é usado por agent/retrieval.js pra ranquear notas junto com
+    // tarefas e humor; a UI de busca ignora o campo.
+    includeScore: true,
     threshold: 0.35,
     ignoreLocation: true,
     minMatchCharLength: 2
   });
 
-  return fuse.search(q).map(result => ({ note: result.item, matches: result.matches || [] }));
+  return fuse.search(q).map(result => ({
+    note: result.item,
+    matches: result.matches || [],
+    score: result.score ?? 1
+  }));
 }
 
 // Used by the buscar_notas tool — just needs the notes, ranked by relevance

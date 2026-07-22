@@ -119,3 +119,64 @@ test('fato duplicado atualiza o existente em vez de empilhar', async ({ page }) 
   expect(factLines).toHaveLength(1);
   expect(factLines[0]).toContain('full-stack');
 });
+
+test('buscar_historico encontra uma nota antiga e devolve pro modelo', async ({ page }) => {
+  // Cria a nota que será recuperada
+  await page.click('button[data-tab="tab-notes"]');
+  await page.click('#btn-new-note');
+  await page.fill('#note-title-input', 'Decisão de preço');
+  await page.fill('#note-body-input', 'Decidimos cobrar setup fee de 2500 nos contratos de automação.');
+  await page.waitForTimeout(600);
+
+  const payloads = await mockGroq(page, [
+    toolReply('buscar_historico', { query: 'setup fee contratos' }),
+    textReply('Você tinha decidido cobrar setup fee de 2500.')
+  ]);
+
+  await page.fill('#chat-input', 'o que eu tinha decidido sobre o preço?');
+  await page.click('#btn-send');
+  await expect(page.locator('.chat-msg.agent', { hasText: 'setup fee de 2500' })).toBeVisible({ timeout: 10000 });
+
+  // O resultado da tool volta como mensagem role:tool no payload seguinte
+  const toolMessage = payloads[1].messages.find((m) => m.role === 'tool');
+  expect(toolMessage).toBeTruthy();
+  expect(toolMessage.content).toContain('setup fee');
+  expect(toolMessage.content).toContain('nota');
+});
+
+test('buscar_historico também encontra tarefas concluídas', async ({ page }) => {
+  await page.click('#btn-open-task-form');
+  await page.fill('#task-title', 'Migrar o site para o novo servidor');
+  await page.click('#task-form button[type="submit"]');
+  await page.locator('.task-item', { hasText: 'Migrar o site' }).locator('.custom-checkbox').click();
+
+  const payloads = await mockGroq(page, [
+    toolReply('buscar_historico', { query: 'migrar site servidor' }),
+    textReply('Foi concluída.')
+  ]);
+
+  await page.fill('#chat-input', 'quando foi que eu concluí a migração do site?');
+  await page.click('#btn-send');
+  await expect(page.locator('.chat-msg.agent', { hasText: 'Foi concluída.' })).toBeVisible({ timeout: 10000 });
+
+  const toolMessage = payloads[1].messages.find((m) => m.role === 'tool');
+  expect(toolMessage.content).toContain('Migrar o site');
+  expect(toolMessage.content).toContain('tarefa');
+  expect(toolMessage.content).toContain('conclu');
+});
+
+test('buscar_historico sem resultado devolve lista vazia, não erro', async ({ page }) => {
+  const payloads = await mockGroq(page, [
+    toolReply('buscar_historico', { query: 'zzzzz assunto inexistente' }),
+    textReply('Não achei nada sobre isso.')
+  ]);
+
+  await page.fill('#chat-input', 'o que eu tinha decidido sobre zzzzz?');
+  await page.click('#btn-send');
+  await expect(page.locator('.chat-msg.agent', { hasText: 'Não achei nada' })).toBeVisible({ timeout: 10000 });
+
+  const toolMessage = payloads[1].messages.find((m) => m.role === 'tool');
+  const payload = JSON.parse(toolMessage.content);
+  expect(payload.status).toBe('ok');
+  expect(payload.results).toEqual([]);
+});

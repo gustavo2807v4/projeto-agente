@@ -10,6 +10,7 @@ import { saveNotes, searchNotes } from '../features/notes.js';
 import { saveMoods, MOOD_LABELS } from '../features/mood.js';
 import { deleteGoogleCalendarEvent, updateGoogleCalendarEventDate } from '../integrations/googleCalendar.js';
 import { rememberFact } from './profile.js';
+import { searchHistoryTool } from './retrieval.js';
 
 // Declares the actions the model is allowed to trigger directly on the user's workspace,
 // in OpenAI-compatible tool-calling format (used by Groq's chat completions API).
@@ -172,6 +173,18 @@ export const AGENT_TOOLS = [
       parameters: {
         type: 'object',
         properties: { query: { type: 'string', description: 'Termo de busca' } },
+        required: ['query']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_historico',
+      description: 'Busca no histórico do usuário (notas, tarefas incluindo concluídas, e registros de humor) por palavra-chave. Use quando a pergunta depender de algo do passado que não está no contexto acima — ex: "o que eu tinha decidido sobre X?", "quando foi que eu fiz Y?".',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string', description: 'Termo de busca (palavras-chave do assunto procurado)' } },
         required: ['query']
       }
     }
@@ -427,6 +440,9 @@ export async function executeFunctionCall(name, args) {
         message: `${matches.length} nota(s) encontrada(s).`,
         results: matches.map(n => ({ id: n.id, titulo: n.title, trecho: (n.body || '').slice(0, 200) }))
       };
+    }
+    case 'buscar_historico': {
+      return searchHistoryTool(args.query);
     }
     case 'lembrar_fato': {
       return rememberFact(args.fato, args.categoria);
