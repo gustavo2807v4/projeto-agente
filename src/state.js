@@ -187,7 +187,7 @@ export function updateAgentStatus() {
   const pulse = document.querySelector('.avatar-pulse');
   if (state.apiKey) {
     label.textContent = 'Gênesis IA Ativo';
-    label.style.color = '#a7f3d0';
+    label.style.color = 'var(--text-primary)';
     pulse.style.backgroundColor = 'var(--success)';
     pulse.style.boxShadow = '0 0 8px var(--success)';
   } else {

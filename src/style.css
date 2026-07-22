@@ -10,27 +10,31 @@
 }
 
 :root {
-  /* Color Palette (Sleek Indigo & Dark Theme) */
-  --bg-primary: #0b0f19;
-  --bg-secondary: #131929;
-  --panel-bg: rgba(22, 30, 49, 0.6);
-  --panel-border: rgba(255, 255, 255, 0.08);
-  --panel-border-hover: rgba(139, 92, 246, 0.3);
-  
-  --accent-grad: linear-gradient(135deg, #8b5cf6 0%, #d946ef 50%, #ec4899 100%);
-  --accent-solid: #8b5cf6;
-  --accent-glow: rgba(139, 92, 246, 0.4);
-  
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.2);
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --danger-glow: rgba(239, 68, 68, 0.2);
-  --blue: #3b82f6;
+  /* Color Palette (Monochrome & Dark Theme) */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --panel-bg: rgba(255, 255, 255, 0.03);
+  --panel-border: rgba(255, 255, 255, 0.09);
+  --panel-border-hover: rgba(255, 255, 255, 0.22);
+
+  --accent-grad: linear-gradient(135deg, #ffffff 0%, #d4d4d4 100%);
+  --accent-solid: #fafafa;
+  /* Text/icon color used ON TOP of accent-colored surfaces (buttons, filled
+     checkboxes) — the accent flips white/black between themes, so anything
+     painted over it must flip the other way. */
+  --accent-contrast: #0a0a0a;
+  --accent-glow: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #fafafa;
+  --text-secondary: #a3a3a3;
+  --text-muted: #6b6b6b;
+
+  --success: #fafafa;
+  --success-glow: rgba(255, 255, 255, 0.12);
+  --warning: #a3a3a3;
+  --danger: #e5484d;
+  --danger-glow: rgba(229, 72, 77, 0.15);
+  --blue: #a3a3a3;
 
   /* Neutral surface tints (white-based washes on the dark theme, flipped to
      dark-based washes on light — everything below is what makes the light
@@ -41,15 +45,15 @@
   --tint-4: rgba(255, 255, 255, 0.1);
   --tint-5: rgba(255, 255, 255, 0.175);
 
-  --app-surface: rgba(10, 15, 30, 0.7);
-  --header-surface: rgba(15, 23, 42, 0.4);
-  --input-bar-surface: rgba(10, 15, 30, 0.3);
-  --input-field-surface: rgba(15, 23, 42, 0.5);
-  --sidebar-surface: rgba(10, 15, 30, 0.2);
-  --preview-surface: rgba(13, 19, 33, 0.7);
-  --modal-surface: rgba(17, 24, 39, 0.75);
+  --app-surface: rgba(10, 10, 10, 0.7);
+  --header-surface: rgba(18, 18, 18, 0.4);
+  --input-bar-surface: rgba(10, 10, 10, 0.3);
+  --input-field-surface: rgba(18, 18, 18, 0.5);
+  --sidebar-surface: rgba(10, 10, 10, 0.2);
+  --preview-surface: rgba(14, 14, 14, 0.7);
+  --modal-surface: rgba(18, 18, 18, 0.75);
   --code-surface: rgba(0, 0, 0, 0.28);
-  --code-text: #ff79c6;
+  --code-text: #e5e5e5;
   --textarea-surface: rgba(0, 0, 0, 0.1);
 
   --radius-sm: 8px;
@@ -64,49 +68,53 @@
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Light Theme — overrides the neutral palette + surface tints above.
-   Colored/branded values (accent gradient, priority badges, success/danger,
-   card icon tints) are left as-is since they already read fine on a light
-   background. */
+/* Light Theme — flips the monochrome palette: white surfaces, near-black
+   accent. Everything themable lives in these variables. */
 :root[data-theme="light"] {
-  --bg-primary: #eef1f8;
+  --bg-primary: #f5f5f5;
   --bg-secondary: #ffffff;
   --panel-bg: rgba(255, 255, 255, 0.55);
-  --panel-border: rgba(15, 23, 42, 0.1);
-  --panel-border-hover: rgba(139, 92, 246, 0.35);
+  --panel-border: rgba(0, 0, 0, 0.1);
+  --panel-border-hover: rgba(0, 0, 0, 0.28);
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --accent-grad: linear-gradient(135deg, #171717 0%, #404040 100%);
+  --accent-solid: #171717;
+  --accent-contrast: #ffffff;
+  --accent-glow: rgba(0, 0, 0, 0.08);
 
-  --tint-1: rgba(15, 23, 42, 0.025);
-  --tint-2: rgba(15, 23, 42, 0.04);
-  --tint-3: rgba(15, 23, 42, 0.06);
-  --tint-4: rgba(15, 23, 42, 0.09);
-  --tint-5: rgba(15, 23, 42, 0.14);
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --text-muted: #a3a3a3;
+
+  --success: #171717;
+  --success-glow: rgba(0, 0, 0, 0.08);
+  --warning: #737373;
+  --blue: #737373;
+
+  --tint-1: rgba(0, 0, 0, 0.025);
+  --tint-2: rgba(0, 0, 0, 0.04);
+  --tint-3: rgba(0, 0, 0, 0.06);
+  --tint-4: rgba(0, 0, 0, 0.09);
+  --tint-5: rgba(0, 0, 0, 0.14);
 
   --app-surface: rgba(255, 255, 255, 0.75);
   --header-surface: rgba(255, 255, 255, 0.5);
   --input-bar-surface: rgba(255, 255, 255, 0.4);
   --input-field-surface: rgba(255, 255, 255, 0.7);
-  --sidebar-surface: rgba(15, 23, 42, 0.03);
+  --sidebar-surface: rgba(0, 0, 0, 0.03);
   --preview-surface: rgba(255, 255, 255, 0.85);
   --modal-surface: rgba(255, 255, 255, 0.85);
-  --code-surface: rgba(15, 23, 42, 0.08);
-  --code-text: #be185d;
-  --textarea-surface: rgba(15, 23, 42, 0.04);
+  --code-surface: rgba(0, 0, 0, 0.08);
+  --code-text: #171717;
+  --textarea-surface: rgba(0, 0, 0, 0.04);
 
-  --shadow-sm: 0 4px 6px -1px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 10px 10px -5px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
   background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
@@ -129,7 +137,7 @@ body {
   border-radius: var(--radius-sm);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.4);
+  background: var(--tint-5);
 }
 
 /* App Container Layout */
@@ -180,7 +188,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
+  color: var(--text-primary);
 }
 
 .header-brand h1 {
@@ -197,9 +205,9 @@ body {
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: #c084fc;
+  background: var(--tint-2);
+  border: 1px solid var(--panel-border);
+  color: var(--text-secondary);
   border-radius: 20px;
   text-transform: uppercase;
 }
@@ -282,7 +290,7 @@ body {
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
   font-size: 18px;
-  color: white;
+  color: var(--accent-contrast);
 }
 
 .avatar-pulse {
@@ -316,17 +324,18 @@ body {
   cursor: pointer;
   border: none;
   transition: all var(--transition-fast);
-  color: white;
+  color: var(--text-primary);
 }
 
 .btn-primary {
   background: var(--accent-grad);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  color: var(--accent-contrast);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
 .btn-primary:active {
@@ -345,13 +354,14 @@ body {
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #fca5a5;
+  background: var(--tint-2);
+  border: 1px solid var(--panel-border);
+  color: var(--text-secondary);
 }
 
 .btn-danger:hover {
   background: var(--danger);
+  border-color: var(--danger);
   color: white;
 }
 
@@ -395,17 +405,17 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  background: rgba(239, 68, 68, 0.05);
-  color: #fca5a5;
+  border: 1px solid var(--panel-border);
+  background: var(--tint-1);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-danger-icon:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.4);
+  background: var(--danger-glow);
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* Chat Module Styles */
@@ -449,9 +459,9 @@ body {
 }
 
 .chat-msg.user .chat-msg-bubble {
-  background: rgba(139, 92, 246, 0.2);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: var(--text-primary);
+  background: var(--accent-solid);
+  border: 1px solid var(--accent-solid);
+  color: var(--accent-contrast);
   border-bottom-right-radius: 4px;
 }
 
@@ -561,8 +571,8 @@ body {
 }
 
 .btn-suggestion:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: var(--tint-3);
+  border-color: var(--tint-5);
   color: var(--text-primary);
 }
 
@@ -640,19 +650,12 @@ body {
   justify-content: center;
 }
 
-.card-icon.blue {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-}
-
-.card-icon.pink {
-  background: rgba(236, 72, 153, 0.15);
-  color: #f472b6;
-}
-
+.card-icon.blue,
+.card-icon.pink,
 .card-icon.orange {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  background: var(--tint-3);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
 }
 
 .card-info {
@@ -773,9 +776,9 @@ body {
 }
 
 .filter-btn.active {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.4);
-  color: #c084fc;
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: var(--accent-contrast);
 }
 
 /* Form Styles */
@@ -909,7 +912,7 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
   content: '';
   width: 5px;
   height: 9px;
-  border: solid white;
+  border: solid var(--accent-contrast);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
   margin-bottom: 2px;
@@ -948,22 +951,24 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
   font-size: 9px;
 }
 
+/* Monochrome priority scale: weight of ink instead of hue —
+   high = filled, medium = outlined, low = faint. */
 .priority-high {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--accent-solid);
+  color: var(--accent-contrast);
+  border: 1px solid var(--accent-solid);
 }
 
 .priority-medium {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--tint-3);
+  color: var(--text-primary);
+  border: 1px solid var(--tint-5);
 }
 
 .priority-low {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: var(--tint-1);
+  color: var(--text-muted);
+  border: 1px solid var(--panel-border);
 }
 
 .task-due-date {
@@ -971,7 +976,7 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
 }
 
 .task-recurrence-badge {
-  color: #c084fc;
+  color: var(--text-secondary);
 }
 
 .task-item-right {
@@ -1084,13 +1089,13 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
 
 .habit-day-btn:hover {
   border-color: var(--accent-solid);
-  background: rgba(139, 92, 246, 0.1);
+  background: var(--tint-3);
 }
 
 .habit-day-btn.completed {
   background: var(--success);
   border-color: transparent;
-  color: white;
+  color: var(--accent-contrast);
   box-shadow: 0 0 10px var(--success-glow);
 }
 
@@ -1156,7 +1161,7 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
 }
 
 .note-item.active {
-  background: rgba(139, 92, 246, 0.1);
+  background: var(--tint-2);
   border-left: 3px solid var(--accent-solid);
 }
 
@@ -1246,7 +1251,7 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
 
 .note-body-wrapper textarea:focus {
   outline: none;
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: var(--panel-border-hover);
   box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
 }
 
@@ -1280,7 +1285,7 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
   margin-top: 16px;
   margin-bottom: 10px;
 }
-.note-preview h1 { font-size: 1.8em; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+.note-preview h1 { font-size: 1.8em; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px; }
 .note-preview h2 { font-size: 1.4em; }
 .note-preview h3 { font-size: 1.1em; }
 .note-preview p { margin-bottom: 12px; }
@@ -1436,7 +1441,7 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-secondary);
-  background: rgba(139, 92, 246, 0.08);
+  background: var(--tint-2);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--panel-border-hover);
