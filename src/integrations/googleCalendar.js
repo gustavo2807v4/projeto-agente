@@ -2,13 +2,13 @@
    GÊNESIS - GOOGLE AGENDA SYNC (OAUTH VIA GOOGLE IDENTITY SERVICES)
    ========================================================================== */
 
-import { state } from '../state.js';
+import { state, STATE_KEYS } from '../state.js';
 // Circular with features/tasks.js (tasks importa delete/update de eventos
 // daqui) — seguro em ESM porque todos os usos acontecem em tempo de execução,
 // nunca durante a avaliação dos módulos.
 import { saveTasks } from '../features/tasks.js';
 
-export let googleTokenClient = null;
+let googleTokenClient = null;
 let googleTokenExpiresAt = 0;
 let googleAuthResolvers = [];
 let googleRefreshTimer = null;
@@ -67,7 +67,7 @@ export function requestGoogleAccessToken({ interactive } = {}) {
   });
 }
 
-export function showCalendarStatus(message, isError) {
+function showCalendarStatus(message, isError) {
   const statusEl = document.getElementById('calendar-status');
   statusEl.style.display = 'block';
   statusEl.innerHTML = message;
@@ -76,7 +76,7 @@ export function showCalendarStatus(message, isError) {
 
 // Creates a Google Calendar all-day event for every pending task that has a due
 // date and hasn't been synced yet (tracked via task.gcalEventId to avoid duplicates)
-export async function syncTasksToGoogleCalendar() {
+async function syncTasksToGoogleCalendar() {
   try {
     await requestGoogleAccessToken({ interactive: true });
   } catch (err) {
@@ -171,4 +171,41 @@ export async function updateGoogleCalendarEventDate(eventId, due) {
   } catch (err) {
     console.error('Erro ao atualizar evento no Google Agenda:', err);
   }
+}
+
+// Wires the Google Calendar modal (Client ID config + connect/sync buttons)
+export function initGoogleCalendarUI() {
+  const calendarModal = document.getElementById('calendar-modal');
+  const googleClientIdInput = document.getElementById('google-client-id-input');
+
+  document.getElementById('btn-google-calendar').addEventListener('click', () => {
+    googleClientIdInput.value = state.googleClientId;
+    document.getElementById('calendar-status').style.display = 'none';
+    calendarModal.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-close-calendar-modal').addEventListener('click', () => {
+    calendarModal.classList.add('hidden');
+  });
+
+  document.getElementById('btn-save-google-client-id').addEventListener('click', () => {
+    state.googleClientId = googleClientIdInput.value.trim();
+    localStorage.setItem(STATE_KEYS.GOOGLE_CLIENT_ID, state.googleClientId);
+    initGoogleCalendarClient();
+    showCalendarStatus('Client ID salvo. Clique em "Conectar e Sincronizar" para autorizar o acesso.', false);
+  });
+
+  document.getElementById('btn-connect-google-calendar').addEventListener('click', () => {
+    if (!state.googleClientId) {
+      showCalendarStatus('❌ Salve um Client ID válido primeiro.', true);
+      return;
+    }
+    if (!googleTokenClient) initGoogleCalendarClient();
+    if (!googleTokenClient) {
+      showCalendarStatus('❌ Não foi possível iniciar o Google Identity Services. Recarregue a página e tente novamente.', true);
+      return;
+    }
+    showCalendarStatus('Conectando...', false);
+    syncTasksToGoogleCalendar();
+  });
 }

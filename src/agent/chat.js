@@ -3,7 +3,7 @@
    ========================================================================== */
 
 import * as localDb from '../db.js';
-import { state } from '../state.js';
+import { state, getInitialChat, saveApiKey } from '../state.js';
 import { parseMarkdown, calculateStreak, getLocalDateString } from '../utils.js';
 import { MOOD_LABELS, getMoodTrendForLastDays } from '../features/mood.js';
 import { callGroq } from './groq.js';
@@ -310,4 +310,71 @@ export async function handleSendMessage(messageText) {
   if (agentResponse.actions.length > 0) agentMsg.actions = agentResponse.actions;
   state.chatHistory.push(agentMsg);
   saveChat();
+}
+
+// Wires the chat form, suggested prompts, clear-chat button and the API key modal
+export function initChatUI() {
+  // Chat submit form
+  document.getElementById('chat-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const msg = input.value;
+    input.value = '';
+    handleSendMessage(msg);
+  });
+
+  // Suggested Prompts
+  document.querySelectorAll('.btn-suggestion').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const prompt = e.currentTarget.getAttribute('data-prompt');
+      handleSendMessage(prompt);
+    });
+  });
+
+  // Clear Chat
+  document.getElementById('btn-clear-chat').addEventListener('click', () => {
+    if (confirm('Tem certeza de que deseja limpar o histórico de conversas?')) {
+      state.chatHistory = getInitialChat();
+      saveChat();
+    }
+  });
+
+  // API Modal Toggles
+  const apiModal = document.getElementById('api-modal');
+  const apiKeyInput = document.getElementById('api-key-input');
+
+  document.getElementById('btn-api-config').addEventListener('click', () => {
+    apiKeyInput.value = state.apiKey;
+    apiModal.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-close-modal').addEventListener('click', () => {
+    apiModal.classList.add('hidden');
+  });
+
+  document.getElementById('btn-save-api-key').addEventListener('click', () => {
+    const key = apiKeyInput.value.trim();
+    saveApiKey(key);
+    apiModal.classList.add('hidden');
+
+    // Notify in chat
+    state.chatHistory.push({
+      sender: 'agent',
+      text: key ? '✅ **API Key configurada com sucesso!** Agora minhas respostas serão inteligentes e personalizadas de verdade!' : '⚠️ **API Key removida.** Retornei ao modo de simulação local.',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+    saveChat();
+  });
+
+  document.getElementById('btn-remove-api-key').addEventListener('click', () => {
+    saveApiKey('');
+    apiModal.classList.add('hidden');
+
+    state.chatHistory.push({
+      sender: 'agent',
+      text: '⚠️ **API Key removida.** Retornei ao modo de simulação local.',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+    saveChat();
+  });
 }
