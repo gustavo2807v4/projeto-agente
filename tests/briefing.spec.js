@@ -246,3 +246,55 @@ test.describe('buildBriefing', () => {
     expect(b.rawText).toContain(b.greeting);
   });
 });
+
+test.describe('briefing na UI', () => {
+  // A primeira carga da página já exibe o briefing e grava a data — por isso
+  // limpamos o registro pelo próprio módulo de persistência (apagar o banco
+  // inteiro fica bloqueado enquanto o app mantém a conexão aberta).
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(async () => {
+      const db = await import('/src/db.js');
+      await db.setSetting('lastBriefingDate', null);
+    });
+  });
+
+  test('aparece ao abrir o app; dispensar e recarregar não mostra de novo', async ({ page }) => {
+    await page.reload({ waitUntil: 'networkidle' });
+
+    const card = page.locator('#briefing-card');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.briefing-greeting')).toHaveText(/Bom dia|Boa tarde|Boa noite/);
+    await expect(card.locator('.briefing-highlight').first()).toBeVisible();
+
+    // Dispensa: some da tela imediatamente
+    await page.click('#btn-dismiss-briefing');
+    await expect(card).toBeHidden();
+
+    // Mesmo dia: não volta ao recarregar
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('#briefing-card')).toBeHidden();
+  });
+
+  test('não repete no mesmo dia mesmo sem dispensar', async ({ page }) => {
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('#briefing-card')).toBeVisible();
+
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('#briefing-card')).toBeHidden();
+  });
+
+  test('volta a aparecer quando a data do último briefing é de outro dia', async ({ page }) => {
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('#briefing-card')).toBeVisible();
+
+    // Simula "ontem" no registro do último briefing
+    await page.evaluate(async () => {
+      const db = await import('/src/db.js');
+      await db.setSetting('lastBriefingDate', '2020-01-01');
+    });
+
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('#briefing-card')).toBeVisible();
+  });
+});

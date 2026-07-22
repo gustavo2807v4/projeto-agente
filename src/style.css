@@ -1581,6 +1581,64 @@ input[type="text"]:focus, select:focus, input[type="date"]:focus, input[type="pa
   background: var(--success-glow);
 }
 
+/* Proactive daily briefing card */
+.briefing-card {
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 1px 0 var(--tint-3);
+  animation: slideDown 0.25s ease-out;
+}
+
+.briefing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.briefing-greeting {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.briefing-header .btn-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.briefing-highlights,
+.briefing-suggestions {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.briefing-highlight {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.briefing-suggestions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.briefing-suggestion {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
 /* Memory (durable profile) modal */
 .modal-body textarea {
   background: var(--input-field-surface);

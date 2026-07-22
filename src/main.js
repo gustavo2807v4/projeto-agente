@@ -14,6 +14,7 @@ import { renderMoodTracker, initMoodUI } from './features/mood.js';
 import { renderChat, initChatUI } from './agent/chat.js';
 import { loadProfile, initProfileSync } from './agent/profile.js';
 import { initProfileUI, renderProfileView } from './features/profile.js';
+import { initBriefing } from './features/briefing.js';
 import { initReportUI } from './features/report.js';
 import { initQuickCapture } from './features/capture.js';
 import {
@@ -119,6 +120,9 @@ async function init() {
   initProfileSync(renderProfileView);
   initTheme();
   initQuickCapture();
+
+  // Briefing proativo do dia — depois dos dados carregados e renderizados.
+  initBriefing();
 
   checkHabitReminders();
   checkTaskDueReminders();
