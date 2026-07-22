@@ -2,7 +2,7 @@
    GÊNESIS - GROQ API CLIENT (MODEL FALLBACK + TOOL-CALL RECOVERY)
    ========================================================================== */
 
-import { state } from '../state.js';
+import { state } from '../../state.js';
 
 // Tries models in order — if one is deprecated/unavailable on the account,
 // we fall back instead of failing outright.
@@ -73,7 +73,9 @@ async function callGroqWithModel(model, body) {
 // that worked so subsequent calls in the same session skip straight to it.
 let lastWorkingModel = null;
 
-export async function callGroq(body) {
+// Interface comum de provider (ver src/agent/providers/): recebe/retorna o
+// formato OpenAI de chat completions que o loop do chat já usa.
+export async function chatCompletion(body) {
   const candidates = lastWorkingModel
     ? [lastWorkingModel, ...GROQ_MODEL_CANDIDATES.filter(m => m !== lastWorkingModel)]
     : GROQ_MODEL_CANDIDATES;

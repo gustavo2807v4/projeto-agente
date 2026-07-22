@@ -6,7 +6,7 @@ import * as localDb from '../db.js';
 import { state, getInitialChat, saveApiKey } from '../state.js';
 import { parseMarkdown, calculateStreak, getLocalDateString } from '../utils.js';
 import { MOOD_LABELS, getMoodTrendForLastDays } from '../features/mood.js';
-import { callGroq } from './groq.js';
+import { chatCompletion as callGroq } from './providers/groq.js';
 import { AGENT_TOOLS, DESTRUCTIVE_TOOLS, describeDestructiveAction, executeFunctionCall } from './tools.js';
 import { formatActionSummary, lastActionUndoStack, setLastActionUndoStack, undoLastAction } from './memory.js';
 

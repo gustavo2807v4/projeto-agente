@@ -5,7 +5,7 @@
 import { state } from '../state.js';
 import { escapeHtml, stripDiacritics, formatDateLocal, getLocalDateString } from '../utils.js';
 import { MOOD_EMOJIS } from './mood.js';
-import { callGroq } from '../agent/groq.js';
+import { chatCompletion as callGroq } from '../agent/providers/groq.js';
 import { executeFunctionCall } from '../agent/tools.js';
 
 // Unaccented so \b word boundaries behave — JS's default (non-unicode) \b

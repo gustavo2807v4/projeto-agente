@@ -6,7 +6,7 @@ import { state } from '../state.js';
 import { escapeHtml, formatDateLocal, getLocalDateString, calculateStreak } from '../utils.js';
 import { MOOD_EMOJIS, MOOD_LABELS, getMoodTrendForLastDays } from './mood.js';
 import { getTaskCreatedAt } from './tasks.js';
-import { callGroq } from '../agent/groq.js';
+import { chatCompletion as callGroq } from '../agent/providers/groq.js';
 import { executeFunctionCall } from '../agent/tools.js';
 import { handleSendMessage } from '../agent/chat.js';
 
