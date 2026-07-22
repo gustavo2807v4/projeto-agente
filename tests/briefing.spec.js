@@ -60,7 +60,39 @@ test.describe('buildBriefing', () => {
     });
 
     const tasksHighlight = b.highlights.find(h => h.type === 'tasks_today');
-    expect(tasksHighlight.text).toBe('Hoje você tem 3 tarefas (1 atrasada).');
+    expect(tasksHighlight.text).toBe('2 para hoje e 1 atrasada.');
+  });
+
+  test('contagem separada: singular e plural dos dois lados', () => {
+    const base = { habits: [], moods: { [TODAY]: 3 }, profile: { core: 'x', learned: [] }, now: NOW };
+    const textFor = (tasks) => buildBriefing({ ...base, tasks }).highlights[0].text;
+
+    // Só hoje
+    expect(textFor([task({ id: 'a', due: TODAY })])).toBe('1 tarefa para hoje.');
+    expect(textFor([task({ id: 'a', due: TODAY }), task({ id: 'b', due: TODAY })])).toBe('2 tarefas para hoje.');
+
+    // Só atrasadas
+    expect(textFor([task({ id: 'a', due: TWO_DAYS_AGO })])).toBe('1 tarefa atrasada.');
+    expect(textFor([task({ id: 'a', due: TWO_DAYS_AGO }), task({ id: 'b', due: THREE_DAYS_AGO })])).toBe('2 tarefas atrasadas.');
+
+    // Ambos
+    expect(textFor([task({ id: 'a', due: TODAY }), task({ id: 'b', due: TWO_DAYS_AGO })]))
+      .toBe('1 para hoje e 1 atrasada.');
+    expect(textFor([
+      task({ id: 'a', due: TODAY }), task({ id: 'b', due: TODAY }), task({ id: 'c', due: TODAY }),
+      task({ id: 'd', due: TWO_DAYS_AGO }), task({ id: 'e', due: THREE_DAYS_AGO })
+    ])).toBe('3 para hoje e 2 atrasadas.');
+  });
+
+  test('sem tarefas de hoje nem atrasadas não gera highlight de tarefas', () => {
+    const b = buildBriefing({
+      tasks: [task({ id: 'a', due: '' })],
+      habits: [], moods: { [TODAY]: 3 },
+      profile: { core: 'x', learned: [] },
+      now: NOW
+    });
+
+    expect(b.highlights.some(h => h.type.startsWith('tasks'))).toBe(false);
   });
 
   test('só atrasadas, sem nada para hoje', () => {
@@ -192,12 +224,14 @@ test.describe('buildBriefing', () => {
   });
 
   test('sugestões respeitam o teto', () => {
+    // Volume alto (5 atrasadas) dispara os 3 gatilhos: zumbi, triagem e hábito
     const b = buildBriefing({
       tasks: [
         task({ id: 'a', title: 'Adiada', due: THREE_DAYS_AGO, rescheduleCount: 5 }),
         task({ id: 'b', due: THREE_DAYS_AGO }),
         task({ id: 'c', due: THREE_DAYS_AGO }),
-        task({ id: 'd', due: THREE_DAYS_AGO })
+        task({ id: 'd', due: THREE_DAYS_AGO }),
+        task({ id: 'e', due: THREE_DAYS_AGO })
       ],
       habits: [{ id: 'h1', name: 'Correr', history: { '2026-07-18': true, '2026-07-19': true, [TWO_DAYS_AGO]: true } }],
       moods: { [TODAY]: 3 },
@@ -205,8 +239,75 @@ test.describe('buildBriefing', () => {
       now: NOW
     });
 
-    // Havia 3 gatilhos (zumbi, triagem de atrasadas, retomar hábito)
     expect(b.suggestions).toHaveLength(MAX_SUGGESTIONS);
+  });
+
+  test('poucas atrasadas + sugestão específica: a genérica de triagem é suprimida', () => {
+    const b = buildBriefing({
+      tasks: [
+        task({ id: 'a', title: 'Refazer o orçamento', due: THREE_DAYS_AGO, rescheduleCount: 4 }),
+        task({ id: 'b', due: THREE_DAYS_AGO }),
+        task({ id: 'c', due: THREE_DAYS_AGO })
+      ],
+      habits: [],
+      moods: { [TODAY]: 3 },
+      profile: { core: 'x', learned: [] },
+      now: NOW
+    });
+
+    expect(b.suggestions.some(s => s.type === 'zombie_task')).toBe(true);
+    expect(b.suggestions.some(s => s.type === 'overdue_triage')).toBe(false);
+  });
+
+  test('muitas atrasadas + sugestão específica: a genérica sobrevive', () => {
+    const b = buildBriefing({
+      tasks: [
+        task({ id: 'a', title: 'Refazer o orçamento', due: THREE_DAYS_AGO, rescheduleCount: 4 }),
+        task({ id: 'b', due: THREE_DAYS_AGO }),
+        task({ id: 'c', due: THREE_DAYS_AGO }),
+        task({ id: 'd', due: THREE_DAYS_AGO }),
+        task({ id: 'e', due: THREE_DAYS_AGO })
+      ],
+      habits: [],
+      moods: { [TODAY]: 3 },
+      profile: { core: 'x', learned: [] },
+      now: NOW
+    });
+
+    expect(b.suggestions.some(s => s.type === 'zombie_task')).toBe(true);
+    expect(b.suggestions.some(s => s.type === 'overdue_triage')).toBe(true);
+  });
+
+  test('sem sugestão específica, a genérica aparece a partir do limiar de triagem', () => {
+    const b = buildBriefing({
+      tasks: [
+        task({ id: 'a', due: THREE_DAYS_AGO }),
+        task({ id: 'b', due: THREE_DAYS_AGO }),
+        task({ id: 'c', due: THREE_DAYS_AGO })
+      ],
+      habits: [],
+      moods: { [TODAY]: 3 },
+      profile: { core: 'x', learned: [] },
+      now: NOW
+    });
+
+    expect(b.suggestions.some(s => s.type === 'overdue_triage')).toBe(true);
+  });
+
+  test('a vaga liberada pela supressão deixa a sugestão de hábito entrar', () => {
+    const b = buildBriefing({
+      tasks: [
+        task({ id: 'a', title: 'Refazer o orçamento', due: THREE_DAYS_AGO, rescheduleCount: 4 }),
+        task({ id: 'b', due: THREE_DAYS_AGO }),
+        task({ id: 'c', due: THREE_DAYS_AGO })
+      ],
+      habits: [{ id: 'h1', name: 'Correr', history: { '2026-07-18': true, '2026-07-19': true, [TWO_DAYS_AGO]: true } }],
+      moods: { [TODAY]: 3 },
+      profile: { core: 'x', learned: [] },
+      now: NOW
+    });
+
+    expect(b.suggestions.map(s => s.type)).toEqual(['zombie_task', 'habit_restart']);
   });
 
   test('perfil vazio em dia limpo sugere preencher a Memória', () => {
@@ -237,7 +338,7 @@ test.describe('buildBriefing', () => {
     };
 
     expect(buildBriefing(input).rawText).toBe(buildBriefing(input).rawText);
-    expect(buildBriefing(input).rawText).toContain('Hoje você tem 2 tarefas (1 atrasada).');
+    expect(buildBriefing(input).rawText).toContain('1 para hoje e 1 atrasada.');
   });
 
   test('chamada sem argumentos não quebra', () => {

@@ -27,6 +27,10 @@ export const MIN_STREAK_TO_MENTION = 2;
 export const RESCHEDULE_SUGGESTION_THRESHOLD = 3;
 // A partir de quantas atrasadas vale sugerir uma repriorização geral.
 export const OVERDUE_TRIAGE_THRESHOLD = 3;
+// Até este volume, uma sugestão específica de tarefa já cobre o assunto e a
+// genérica de triagem é suprimida por redundância. Acima disso o volume vira
+// um sinal próprio ("são muitas") e as duas podem conviver.
+export const OVERDUE_VOLUME_THRESHOLD = 4;
 
 export const MAX_HIGHLIGHTS = 4;
 export const MAX_SUGGESTIONS = 2;
@@ -60,19 +64,18 @@ function summarizeDueTasks(tasks, todayStr) {
 }
 
 function buildTasksHighlight({ overdue, today }) {
-  const total = overdue.length + today.length;
-  if (total === 0) return null;
+  if (today.length === 0 && overdue.length === 0) return null;
 
   if (today.length > 0 && overdue.length > 0) {
     return {
       type: 'tasks_today',
-      text: `Hoje você tem ${total} ${plural(total, 'tarefa', 'tarefas')} (${overdue.length} ${plural(overdue.length, 'atrasada', 'atrasadas')}).`
+      text: `${today.length} para hoje e ${overdue.length} ${plural(overdue.length, 'atrasada', 'atrasadas')}.`
     };
   }
   if (today.length > 0) {
     return {
       type: 'tasks_today',
-      text: `Hoje você tem ${today.length} ${plural(today.length, 'tarefa', 'tarefas')}.`
+      text: `${today.length} ${plural(today.length, 'tarefa', 'tarefas')} para hoje.`
     };
   }
   return {
@@ -179,7 +182,10 @@ function buildSuggestions({ tasks, overdue, brokenStreak, profile }) {
     });
   }
 
-  if (overdue.length >= OVERDUE_TRIAGE_THRESHOLD) {
+  // Com uma sugestão específica de tarefa já na mesa, a genérica de triagem só
+  // acrescenta algo quando o volume de atrasadas é alto.
+  const redundantWithSpecific = Boolean(stuck) && overdue.length <= OVERDUE_VOLUME_THRESHOLD;
+  if (overdue.length >= OVERDUE_TRIAGE_THRESHOLD && !redundantWithSpecific) {
     suggestions.push({
       type: 'overdue_triage',
       text: `São ${overdue.length} tarefas atrasadas — quer repriorizar antes de começar?`
