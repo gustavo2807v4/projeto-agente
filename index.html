@@ -531,7 +531,7 @@
       <div id="api-modal" class="modal-overlay hidden">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Configurar API da Groq</h3>
+            <h3>Configurar APIs</h3>
             <button id="btn-close-modal" class="btn-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -546,6 +546,12 @@
               <input type="password" id="api-key-input" placeholder="gsk_..." />
             </div>
             <p class="api-help-text">Sua chave é salva localmente apenas no seu navegador e nunca é enviada para outros servidores que não sejam a própria API oficial da Groq.</p>
+            <hr class="modal-divider" />
+            <p>Opcional: uma <strong>Anthropic API Key</strong> ativa o modelo forte (Claude) para conversa aberta e raciocínio pesado. Sem ela, tudo continua rodando na Groq.</p>
+            <div class="form-row">
+              <label for="anthropic-key-input">Anthropic API Key (modelo forte)</label>
+              <input type="password" id="anthropic-key-input" placeholder="sk-ant-..." />
+            </div>
           </div>
           <div class="modal-footer">
             <button id="btn-remove-api-key" class="btn btn-danger">Remover Chave</button>

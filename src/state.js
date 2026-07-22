@@ -11,6 +11,7 @@ export const STATE_KEYS = {
   NOTES: 'genesis_notes',
   CHAT: 'genesis_chat',
   API_KEY: 'genesis_api_key',
+  ANTHROPIC_API_KEY: 'genesis_anthropic_api_key',
   NOTIFICATIONS: 'genesis_notifications_enabled',
   LAST_REMINDER: 'genesis_last_reminder_date',
   LAST_TASK_REMINDER: 'genesis_last_task_reminder_date',
@@ -25,6 +26,7 @@ export let state = {
   notes: [],
   chatHistory: [],
   apiKey: '',
+  anthropicApiKey: '',
   activeNoteId: null,
   activeTab: 'tab-tasks',
   taskFilter: 'all',
@@ -75,6 +77,7 @@ export async function loadState() {
   // Small per-device scalars that stay in localStorage (see db.js comment
   // for why): Groq key, Google Client ID, and theme.
   state.apiKey = localStorage.getItem(STATE_KEYS.API_KEY) || '';
+  state.anthropicApiKey = localStorage.getItem(STATE_KEYS.ANTHROPIC_API_KEY) || '';
   state.googleClientId = localStorage.getItem(STATE_KEYS.GOOGLE_CLIENT_ID) || '';
   state.notificationsEnabled = await localDb.getSetting('notificationsEnabled', false);
 }
@@ -83,6 +86,13 @@ export function saveApiKey(key) {
   state.apiKey = key;
   localStorage.setItem(STATE_KEYS.API_KEY, key);
   updateAgentStatus();
+}
+
+// Chave do modelo forte (Anthropic) — opcional; sem ela o router sempre
+// cai no Groq via fallback.
+export function saveAnthropicApiKey(key) {
+  state.anthropicApiKey = key;
+  localStorage.setItem(STATE_KEYS.ANTHROPIC_API_KEY, key);
 }
 
 // ==========================================================================

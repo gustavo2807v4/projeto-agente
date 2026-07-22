@@ -3,7 +3,7 @@
    ========================================================================== */
 
 import * as localDb from '../db.js';
-import { state, getInitialChat, saveApiKey } from '../state.js';
+import { state, getInitialChat, saveApiKey, saveAnthropicApiKey } from '../state.js';
 import { parseMarkdown, calculateStreak, getLocalDateString } from '../utils.js';
 import { MOOD_LABELS, getMoodTrendForLastDays } from '../features/mood.js';
 import { chatCompletion as callGroq } from './providers/groq.js';
@@ -342,9 +342,11 @@ export function initChatUI() {
   // API Modal Toggles
   const apiModal = document.getElementById('api-modal');
   const apiKeyInput = document.getElementById('api-key-input');
+  const anthropicKeyInput = document.getElementById('anthropic-key-input');
 
   document.getElementById('btn-api-config').addEventListener('click', () => {
     apiKeyInput.value = state.apiKey;
+    anthropicKeyInput.value = state.anthropicApiKey;
     apiModal.classList.remove('hidden');
   });
 
@@ -355,6 +357,7 @@ export function initChatUI() {
   document.getElementById('btn-save-api-key').addEventListener('click', () => {
     const key = apiKeyInput.value.trim();
     saveApiKey(key);
+    saveAnthropicApiKey(anthropicKeyInput.value.trim());
     apiModal.classList.add('hidden');
 
     // Notify in chat
@@ -368,6 +371,7 @@ export function initChatUI() {
 
   document.getElementById('btn-remove-api-key').addEventListener('click', () => {
     saveApiKey('');
+    saveAnthropicApiKey('');
     apiModal.classList.add('hidden');
 
     state.chatHistory.push({
