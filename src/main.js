@@ -28,11 +28,18 @@ import {
 import {
   googleTokenClient,
   initGoogleCalendarClient,
-  requestGoogleAccessToken,
   showCalendarStatus,
+  syncTasksToGoogleCalendar,
   deleteGoogleCalendarEvent,
   updateGoogleCalendarEventDate
 } from './integrations/googleCalendar.js';
+import {
+  saveTasks,
+  renderTasks,
+  getTaskCreatedAt,
+  spawnNextRecurrence,
+  initTasksUI
+} from './features/tasks.js';
 import { callGroq } from './agent/groq.js';
 import { queueCloudPush, initCloudSync } from './integrations/cloudSync.js';
 
@@ -46,13 +53,6 @@ document.documentElement.setAttribute('data-theme', localStorage.getItem(STATE_K
 function saveMoods() {
   localDb.saveMoods(state.moods).catch(err => console.error('Erro ao salvar humor:', err));
   renderMoodTracker();
-  queueCloudPush();
-}
-
-function saveTasks() {
-  localDb.saveTasks(state.tasks).catch(err => console.error('Erro ao salvar tarefas:', err));
-  renderTasks();
-  updateStats();
   queueCloudPush();
 }
 
@@ -85,133 +85,6 @@ function renderMoodTracker() {
   const selected = state.moods[todayStr];
   document.querySelectorAll('.mood-btn').forEach(btn => {
     btn.classList.toggle('active', Number(btn.getAttribute('data-mood')) === selected);
-  });
-}
-
-// Opens the task form pre-filled with an existing task's data, in edit mode
-function openTaskFormForEdit(task) {
-  state.editingTaskId = task.id;
-  const form = document.getElementById('task-form');
-  document.getElementById('task-title').value = task.title;
-  document.getElementById('task-priority').value = task.priority;
-  document.getElementById('task-due').value = task.due || '';
-  document.getElementById('task-recurrence').value = task.recurrence || '';
-  form.classList.remove('hidden');
-  form.querySelector('button[type="submit"]').textContent = 'Salvar Alterações';
-  document.getElementById('task-title').focus();
-}
-
-// Tasks created before this field existed won't have it — fall back to the
-// timestamp embedded in the id (`task_<epoch ms>`), or 0 as a last resort.
-function getTaskCreatedAt(task) {
-  if (task.createdAt) return task.createdAt;
-  const match = /^task_(\d+)$/.exec(task.id);
-  return match ? Number(match[1]) : 0;
-}
-
-// Creates the next occurrence of a recurring task once the current one is completed
-function spawnNextRecurrence(task) {
-  state.tasks.push({
-    id: 'task_' + Date.now(),
-    title: task.title,
-    priority: task.priority,
-    due: computeNextDueDate(task.due, task.recurrence),
-    completed: false,
-    recurrence: task.recurrence,
-    createdAt: Date.now(),
-    rescheduleCount: 0
-  });
-}
-
-// Task Rendering
-function renderTasks() {
-  const container = document.getElementById('task-list-container');
-  container.innerHTML = '';
-
-  let filtered = state.tasks;
-  if (state.taskFilter === 'pending') {
-    filtered = state.tasks.filter(t => !t.completed);
-  } else if (state.taskFilter === 'completed') {
-    filtered = state.tasks.filter(t => t.completed);
-  }
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="notes-empty-state"><p>Nenhuma tarefa encontrada.</p></div>';
-    return;
-  }
-
-  // Sort by priority (high > medium > low) and completed status
-  filtered.sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    const priorityWeight = { high: 3, medium: 2, low: 1 };
-    return priorityWeight[b.priority] - priorityWeight[a.priority];
-  });
-
-  filtered.forEach(task => {
-    const item = document.createElement('div');
-    item.className = `task-item ${task.completed ? 'completed' : ''}`;
-    
-    const formattedDate = task.due ? new Date(task.due + 'T00:00:00').toLocaleDateString('pt-BR', {day: 'numeric', month: 'short'}) : '';
-
-    item.innerHTML = `
-      <div class="task-item-left">
-        <div class="custom-checkbox ${task.completed ? 'checked' : ''}" data-id="${task.id}"></div>
-        <div class="task-details">
-          <span class="task-title">${escapeHtml(task.title)}</span>
-          <div class="task-meta">
-            <span class="task-priority-badge priority-${task.priority}">${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}</span>
-            ${task.due ? `<span class="task-due-date">📅 ${formattedDate}</span>` : ''}
-            ${task.recurrence ? `<span class="task-recurrence-badge">🔁 ${RECURRENCE_LABELS[task.recurrence] || task.recurrence}</span>` : ''}
-          </div>
-        </div>
-      </div>
-      <div class="task-item-right">
-        <button class="btn-icon btn-edit-task" data-id="${task.id}" title="Editar tarefa">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-        </button>
-        <button class="btn-danger-icon btn-delete-task" data-id="${task.id}" title="Excluir tarefa">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-          </svg>
-        </button>
-      </div>
-    `;
-
-    // Edit listener — reopens the task form pre-filled, in edit mode
-    item.querySelector('.btn-edit-task').addEventListener('click', () => {
-      openTaskFormForEdit(task);
-    });
-
-    // Toggle complete listener — also clears the task off Google Agenda and
-    // spawns the next occurrence, if the task recurs
-    item.querySelector('.custom-checkbox').addEventListener('click', async () => {
-      task.completed = !task.completed;
-      task.completedAt = task.completed ? Date.now() : undefined;
-      if (task.completed && task.recurrence) {
-        spawnNextRecurrence(task);
-      }
-      saveTasks();
-      if (task.completed && task.gcalEventId) {
-        const eventId = task.gcalEventId;
-        task.gcalEventId = undefined;
-        await deleteGoogleCalendarEvent(eventId);
-        saveTasks();
-      }
-    });
-
-    // Delete listener — also removes the synced Google Agenda event, if any
-    item.querySelector('.btn-delete-task').addEventListener('click', async () => {
-      const eventId = task.gcalEventId;
-      state.tasks = state.tasks.filter(t => t.id !== task.id);
-      saveTasks();
-      if (eventId) await deleteGoogleCalendarEvent(eventId);
-    });
-
-    container.appendChild(item);
   });
 }
 
@@ -1698,63 +1571,6 @@ function initVoiceInput() {
 }
 
 // ==========================================================================
-// 9. GOOGLE AGENDA SYNC — see src/integrations/googleCalendar.js
-// (syncTasksToGoogleCalendar aguarda a extração de features/tasks.js, pois
-// depende de saveTasks)
-// ==========================================================================
-
-// Creates a Google Calendar all-day event for every pending task that has a due
-// date and hasn't been synced yet (tracked via task.gcalEventId to avoid duplicates)
-async function syncTasksToGoogleCalendar() {
-  try {
-    await requestGoogleAccessToken({ interactive: true });
-  } catch (err) {
-    showCalendarStatus(`❌ ${err.message}`, true);
-    return;
-  }
-
-  const tasksToSync = state.tasks.filter(t => t.due && !t.completed && !t.gcalEventId);
-
-  if (tasksToSync.length === 0) {
-    showCalendarStatus('✅ Conectado! Nenhuma tarefa pendente com prazo para sincronizar no momento.', false);
-    return;
-  }
-
-  let synced = 0;
-  let failed = 0;
-
-  for (const task of tasksToSync) {
-    try {
-      const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${state.googleAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          summary: `📋 ${task.title}`,
-          description: `Tarefa criada pelo Gênesis (prioridade: ${task.priority})`,
-          start: { date: task.due },
-          end: { date: task.due }
-        })
-      });
-
-      if (!response.ok) throw new Error(await response.text());
-
-      const event = await response.json();
-      task.gcalEventId = event.id;
-      synced++;
-    } catch (err) {
-      console.error('Erro ao sincronizar tarefa com Google Agenda:', err);
-      failed++;
-    }
-  }
-
-  saveTasks();
-  showCalendarStatus(`✅ ${synced} tarefa(s) sincronizada(s) com o Google Agenda.${failed > 0 ? ` ⚠️ ${failed} falharam.` : ''}`, failed > 0 && synced === 0);
-}
-
-// ==========================================================================
 // 10. BACKUP & RESTORE
 // ==========================================================================
 
@@ -2451,92 +2267,8 @@ function initEventListeners() {
     saveChat();
   });
 
-  // Task inline form toggle
-  const taskForm = document.getElementById('task-form');
-  const taskFormSubmitBtn = taskForm.querySelector('button[type="submit"]');
-
-  document.getElementById('btn-open-task-form').addEventListener('click', () => {
-    const wasHidden = taskForm.classList.contains('hidden');
-    state.editingTaskId = null;
-    taskFormSubmitBtn.textContent = 'Salvar';
-    if (wasHidden) {
-      taskForm.reset();
-      taskForm.classList.remove('hidden');
-      document.getElementById('task-title').focus();
-    } else {
-      taskForm.classList.add('hidden');
-    }
-  });
-
-  document.getElementById('btn-cancel-task').addEventListener('click', () => {
-    taskForm.classList.add('hidden');
-    taskForm.reset();
-    state.editingTaskId = null;
-    taskFormSubmitBtn.textContent = 'Salvar';
-  });
-
-  // Add/Edit Task submit
-  taskForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const title = document.getElementById('task-title').value.trim();
-    const priority = document.getElementById('task-priority').value;
-    const due = document.getElementById('task-due').value;
-    const recurrence = document.getElementById('task-recurrence').value;
-
-    if (!title) return;
-
-    if (state.editingTaskId) {
-      const task = state.tasks.find(t => t.id === state.editingTaskId);
-      if (task) {
-        const dueChanged = task.due !== due;
-        task.title = title;
-        task.priority = priority;
-        task.due = due;
-        task.recurrence = recurrence;
-        if (dueChanged) task.rescheduleCount = (task.rescheduleCount || 0) + 1;
-        saveTasks();
-        if (dueChanged && task.gcalEventId) {
-          if (due) {
-            await updateGoogleCalendarEventDate(task.gcalEventId, due);
-          } else {
-            const eventId = task.gcalEventId;
-            task.gcalEventId = undefined;
-            saveTasks();
-            await deleteGoogleCalendarEvent(eventId);
-          }
-        }
-      }
-      state.editingTaskId = null;
-    } else {
-      const newTask = {
-        id: 'task_' + Date.now(),
-        title,
-        priority,
-        due,
-        recurrence,
-        completed: false,
-        createdAt: Date.now(),
-        rescheduleCount: 0
-      };
-      state.tasks.push(newTask);
-      saveTasks();
-    }
-
-    // Reset and hide form
-    taskForm.reset();
-    taskForm.classList.add('hidden');
-    taskFormSubmitBtn.textContent = 'Salvar';
-  });
-
-  // Task Filters
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      state.taskFilter = e.currentTarget.getAttribute('data-filter');
-      renderTasks();
-    });
-  });
+  // Task form, toggles and filters — wired by features/tasks.js
+  initTasksUI();
 
   // Habit form toggle
   const habitForm = document.getElementById('habit-form');

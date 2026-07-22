@@ -3,6 +3,10 @@
    ========================================================================== */
 
 import { state } from '../state.js';
+// Circular with features/tasks.js (tasks importa delete/update de eventos
+// daqui) — seguro em ESM porque todos os usos acontecem em tempo de execução,
+// nunca durante a avaliação dos módulos.
+import { saveTasks } from '../features/tasks.js';
 
 export let googleTokenClient = null;
 let googleTokenExpiresAt = 0;
@@ -68,6 +72,57 @@ export function showCalendarStatus(message, isError) {
   statusEl.style.display = 'block';
   statusEl.innerHTML = message;
   statusEl.style.borderColor = isError ? 'var(--danger)' : 'var(--panel-border-hover)';
+}
+
+// Creates a Google Calendar all-day event for every pending task that has a due
+// date and hasn't been synced yet (tracked via task.gcalEventId to avoid duplicates)
+export async function syncTasksToGoogleCalendar() {
+  try {
+    await requestGoogleAccessToken({ interactive: true });
+  } catch (err) {
+    showCalendarStatus(`❌ ${err.message}`, true);
+    return;
+  }
+
+  const tasksToSync = state.tasks.filter(t => t.due && !t.completed && !t.gcalEventId);
+
+  if (tasksToSync.length === 0) {
+    showCalendarStatus('✅ Conectado! Nenhuma tarefa pendente com prazo para sincronizar no momento.', false);
+    return;
+  }
+
+  let synced = 0;
+  let failed = 0;
+
+  for (const task of tasksToSync) {
+    try {
+      const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.googleAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          summary: `📋 ${task.title}`,
+          description: `Tarefa criada pelo Gênesis (prioridade: ${task.priority})`,
+          start: { date: task.due },
+          end: { date: task.due }
+        })
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const event = await response.json();
+      task.gcalEventId = event.id;
+      synced++;
+    } catch (err) {
+      console.error('Erro ao sincronizar tarefa com Google Agenda:', err);
+      failed++;
+    }
+  }
+
+  saveTasks();
+  showCalendarStatus(`✅ ${synced} tarefa(s) sincronizada(s) com o Google Agenda.${failed > 0 ? ` ⚠️ ${failed} falharam.` : ''}`, failed > 0 && synced === 0);
 }
 
 // Best-effort removal of a synced event — called when a task is completed or
