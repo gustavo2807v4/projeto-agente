@@ -60,7 +60,7 @@ test.describe('buildBriefing', () => {
     });
 
     const tasksHighlight = b.highlights.find(h => h.type === 'tasks_today');
-    expect(tasksHighlight.text).toBe('2 para hoje e 1 atrasada.');
+    expect(tasksHighlight.text).toBe('2 tarefas para hoje e 1 atrasada.');
   });
 
   test('contagem separada: singular e plural dos dois lados', () => {
@@ -77,11 +77,11 @@ test.describe('buildBriefing', () => {
 
     // Ambos
     expect(textFor([task({ id: 'a', due: TODAY }), task({ id: 'b', due: TWO_DAYS_AGO })]))
-      .toBe('1 para hoje e 1 atrasada.');
+      .toBe('1 tarefa para hoje e 1 atrasada.');
     expect(textFor([
       task({ id: 'a', due: TODAY }), task({ id: 'b', due: TODAY }), task({ id: 'c', due: TODAY }),
       task({ id: 'd', due: TWO_DAYS_AGO }), task({ id: 'e', due: THREE_DAYS_AGO })
-    ])).toBe('3 para hoje e 2 atrasadas.');
+    ])).toBe('3 tarefas para hoje e 2 atrasadas.');
   });
 
   test('sem tarefas de hoje nem atrasadas não gera highlight de tarefas', () => {
@@ -338,7 +338,7 @@ test.describe('buildBriefing', () => {
     };
 
     expect(buildBriefing(input).rawText).toBe(buildBriefing(input).rawText);
-    expect(buildBriefing(input).rawText).toContain('1 para hoje e 1 atrasada.');
+    expect(buildBriefing(input).rawText).toContain('1 tarefa para hoje e 1 atrasada.');
   });
 
   test('chamada sem argumentos não quebra', () => {
