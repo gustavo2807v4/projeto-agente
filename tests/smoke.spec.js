@@ -356,3 +356,57 @@ test('recovers from a Groq "leaked function call" 400 error and still executes t
 
   await expect(page.locator('.task-item', { hasText: 'Tarefa recuperada do erro' })).toBeVisible({ timeout: 10000 });
 });
+
+test('não reenvia o campo reasoning dos modelos gpt-oss no loop de tools', async ({ page }) => {
+  // Modelos de raciocínio da Groq devolvem um campo `reasoning` na resposta.
+  // Reenviá-lo na próxima rodada faz a API responder 400 ("reasoning is not
+  // supported with this model"). A mensagem do assistente deve ser sanitizada
+  // antes de voltar ao histórico.
+  await page.evaluate(() => localStorage.setItem('genesis_api_key', 'gsk_fake_test_key'));
+  await page.reload({ waitUntil: 'networkidle' });
+
+  let secondRequestBody = null;
+  let call = 0;
+  await page.route('https://api.groq.com/openai/v1/chat/completions', async (route) => {
+    call++;
+    if (call === 1) {
+      // Rodada 1: tool call acompanhada de um campo `reasoning` (como gpt-oss faz)
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: null,
+              reasoning: 'O usuário pediu para criar uma tarefa; vou chamar criar_tarefa.',
+              tool_calls: [{
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'criar_tarefa', arguments: JSON.stringify({ titulo: 'Tarefa via modelo de raciocínio' }) }
+              }]
+            }
+          }]
+        })
+      });
+    } else {
+      secondRequestBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Pronto, criei a tarefa.' } }] })
+      });
+    }
+  });
+
+  await page.fill('#chat-input', 'cria uma tarefa');
+  await page.click('#btn-send');
+
+  await expect(page.locator('.task-item', { hasText: 'Tarefa via modelo de raciocínio' })).toBeVisible({ timeout: 10000 });
+
+  // A mensagem do assistente reinjetada no histórico não pode carregar reasoning
+  const assistantMsg = secondRequestBody.messages.find(m => m.role === 'assistant' && m.tool_calls);
+  expect(assistantMsg).toBeTruthy();
+  expect(assistantMsg.reasoning).toBeUndefined();
+  expect(assistantMsg.tool_calls[0].function.name).toBe('criar_tarefa');
+});

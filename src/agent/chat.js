@@ -165,6 +165,17 @@ REGRAS GERAIS: se a intenção ou o id for ambíguo, pergunte antes de agir. Nun
 
 const MAX_TOOL_ROUNDS = 5;
 
+// A resposta do assistente é reinjetada no histórico a cada round do loop de
+// tools. Modelos de raciocínio da Groq (gpt-oss) devolvem um campo `reasoning`
+// que a API REJEITA quando reenviado na entrada ("reasoning is not supported
+// with this model"). Mantemos só os campos que a chat completions aceita de
+// volta — role, content e tool_calls.
+function toReplayableAssistantMessage(message) {
+  const clean = { role: 'assistant', content: message.content ?? null };
+  if (message.tool_calls) clean.tool_calls = message.tool_calls;
+  return clean;
+}
+
 // Único ponto de despacho entre providers — chat.js não sabe qual é qual.
 // Se o modelo forte falhar por QUALQUER motivo (sem chave, rede, 4xx/5xx,
 // timeout, recusa), cai no Groq e loga o porquê. O app nunca fica sem
@@ -232,7 +243,7 @@ async function getAgentResponse(userMessage) {
         return { text: finalText, actions: actionLog };
       }
 
-      messages.push(message);
+      messages.push(toReplayableAssistantMessage(message));
 
       for (const tc of toolCalls) {
         let args = {};
