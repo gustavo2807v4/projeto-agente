@@ -8,7 +8,7 @@ import { saveTasks, spawnNextRecurrence } from '../features/tasks.js';
 import { saveHabits } from '../features/habits.js';
 import { saveNotes, searchNotes } from '../features/notes.js';
 import { saveMoods, MOOD_LABELS } from '../features/mood.js';
-import { deleteGoogleCalendarEvent, updateGoogleCalendarEventDate } from '../integrations/googleCalendar.js';
+import { deleteGoogleCalendarEvent, updateGoogleCalendarEvent, syncNewTaskToGoogleCalendar } from '../integrations/googleCalendar.js';
 import { rememberFact } from './profile.js';
 import { searchHistoryTool } from './retrieval.js';
 
@@ -22,13 +22,14 @@ export const AGENT_TOOLS = [
     type: 'function',
     function: {
       name: 'criar_tarefa',
-      description: 'Cria uma nova tarefa no painel do usuário.',
+      description: 'Cria uma nova tarefa no painel do usuário. Se o usuário der um horário (ex: reunião às 10h), informe também "hora" — a tarefa vira um compromisso com horário e, se o Google Agenda estiver conectado, é agendada nele.',
       parameters: {
         type: 'object',
         properties: {
           titulo: { type: 'string', description: 'Título da tarefa' },
           prioridade: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Prioridade da tarefa (padrão: medium)' },
           prazo: { type: 'string', description: 'Prazo no formato YYYY-MM-DD, se mencionado' },
+          hora: { type: 'string', description: 'Horário no formato HH:MM (24h), se o usuário marcar um compromisso com hora. Exige prazo. Omita para tarefa sem horário.' },
           recorrencia: { type: 'string', enum: ['daily', 'weekly', 'monthly'], description: 'Se a tarefa deve se repetir automaticamente após concluída (omita se não for recorrente)' }
         },
         required: ['titulo']
@@ -77,6 +78,7 @@ export const AGENT_TOOLS = [
           titulo: { type: 'string', description: 'Novo título, se for alterar' },
           prioridade: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Nova prioridade, se for alterar' },
           prazo: { type: 'string', description: 'Novo prazo no formato YYYY-MM-DD, se for alterar (envie vazio para remover)' },
+          hora: { type: 'string', description: 'Novo horário no formato HH:MM, se for alterar ("none" para remover o horário e voltar a tarefa de dia inteiro)' },
           recorrencia: { type: 'string', enum: ['none', 'daily', 'weekly', 'monthly'], description: 'Nova recorrência, se for alterar ("none" para parar de repetir)' }
         },
         required: ['id']
@@ -259,6 +261,8 @@ export async function executeFunctionCall(name, args) {
         title: args.titulo,
         priority: args.prioridade || 'medium',
         due: args.prazo || '',
+        // Horário só faz sentido com prazo; sem prazo, ignoramos a hora.
+        dueTime: (args.prazo && args.hora) ? args.hora : '',
         recurrence: args.recorrencia || '',
         completed: false,
         createdAt: Date.now(),
@@ -266,10 +270,27 @@ export async function executeFunctionCall(name, args) {
       };
       state.tasks.push(newTask);
       saveTasks();
+
+      // Auto-sync: se o Agenda estiver conectado, a tarefa com prazo já vai pro
+      // Google. Silencioso e best-effort — sem conexão, segue pelo botão manual.
+      const scheduled = await syncNewTaskToGoogleCalendar(newTask);
+
+      const when = newTask.due
+        ? ` para ${newTask.due}${newTask.dueTime ? ` às ${newTask.dueTime}` : ''}`
+        : '';
+      const message = scheduled
+        ? `Tarefa "${newTask.title}"${when} criada e agendada no Google Agenda.`
+        : `Tarefa "${newTask.title}"${when} adicionada.`;
+
       return {
         status: 'ok',
-        message: `Tarefa "${newTask.title}" adicionada.`,
-        undo: () => { state.tasks = state.tasks.filter(t => t.id !== newTask.id); saveTasks(); }
+        message,
+        undo: async () => {
+          const eventId = newTask.gcalEventId;
+          state.tasks = state.tasks.filter(t => t.id !== newTask.id);
+          saveTasks();
+          if (eventId) await deleteGoogleCalendarEvent(eventId);
+        }
       };
     }
     case 'concluir_tarefa': {
@@ -316,7 +337,7 @@ export async function executeFunctionCall(name, args) {
       saveTasks();
 
       if (task.gcalEventId) {
-        if (task.due) await updateGoogleCalendarEventDate(task.gcalEventId, task.due);
+        if (task.due) await updateGoogleCalendarEvent(task.gcalEventId, task);
         else { const eventId = task.gcalEventId; task.gcalEventId = undefined; saveTasks(); await deleteGoogleCalendarEvent(eventId); }
       }
 
@@ -330,18 +351,24 @@ export async function executeFunctionCall(name, args) {
       const task = state.tasks.find(t => t.id === args.id);
       if (!task) return { status: 'error', message: `Nenhuma tarefa encontrada com o id "${args.id}".` };
 
-      const previous = { title: task.title, priority: task.priority, due: task.due, recurrence: task.recurrence, rescheduleCount: task.rescheduleCount || 0 };
+      const previous = { title: task.title, priority: task.priority, due: task.due, dueTime: task.dueTime, recurrence: task.recurrence, rescheduleCount: task.rescheduleCount || 0 };
       const dueChanged = args.prazo !== undefined && args.prazo !== task.due;
+      const timeChanged = args.hora !== undefined;
 
       if (args.titulo) task.title = args.titulo;
       if (args.prioridade) task.priority = args.prioridade;
       if (args.prazo !== undefined) task.due = args.prazo;
+      if (timeChanged) task.dueTime = args.hora === 'none' ? '' : args.hora;
       if (args.recorrencia !== undefined) task.recurrence = args.recorrencia === 'none' ? '' : args.recorrencia;
       if (dueChanged) task.rescheduleCount = (task.rescheduleCount || 0) + 1;
+      // Horário sem prazo não vira evento; mantém coerência.
+      if (!task.due) task.dueTime = '';
       saveTasks();
 
-      if (dueChanged && task.gcalEventId) {
-        if (task.due) await updateGoogleCalendarEventDate(task.gcalEventId, task.due);
+      // Reflete no Agenda: evento existente é atualizado (data e/ou hora);
+      // sem prazo, é removido.
+      if ((dueChanged || timeChanged) && task.gcalEventId) {
+        if (task.due) await updateGoogleCalendarEvent(task.gcalEventId, task);
         else { const eventId = task.gcalEventId; task.gcalEventId = undefined; saveTasks(); await deleteGoogleCalendarEvent(eventId); }
       }
 

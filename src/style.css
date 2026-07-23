@@ -828,6 +828,12 @@ label {
   letter-spacing: 0.5px;
 }
 
+.form-hint {
+  font-weight: 400;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
 input[type="text"], select, input[type="date"], input[type="password"] {
   background: var(--input-field-surface);
   border: 1px solid var(--panel-border);

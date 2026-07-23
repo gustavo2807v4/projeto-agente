@@ -74,6 +74,50 @@ function showCalendarStatus(message, isError) {
   statusEl.style.borderColor = isError ? 'var(--danger)' : 'var(--panel-border-hover)';
 }
 
+// Reunião = tarefa com horário. Duração fixa de 1h por enquanto.
+const DEFAULT_EVENT_DURATION_MIN = 60;
+
+function browserTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+// "2026-07-24T10:00:00" — hora de parede local, sem offset; pareada com o campo
+// timeZone, é assim que o Google interpreta o horário na zona certa.
+function toLocalDateTime(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}:00`;
+}
+
+// Corpo do evento do Google a partir de uma tarefa: com dueTime vira evento
+// cronometrado (1h); sem dueTime, permanece de dia inteiro (comportamento
+// anterior). Enviar start/end completos também faz o PATCH alternar entre os
+// dois formatos corretamente, porque o Google substitui o objeto inteiro.
+export function buildEventBody(task) {
+  const base = {
+    summary: `📋 ${task.title}`,
+    description: `Tarefa criada pelo Gênesis (prioridade: ${task.priority})`
+  };
+
+  if (task.dueTime) {
+    const [hh, mm] = task.dueTime.split(':').map(Number);
+    const [y, mo, d] = task.due.split('-').map(Number);
+    const start = new Date(y, mo - 1, d, hh, mm);
+    const end = new Date(start.getTime() + DEFAULT_EVENT_DURATION_MIN * 60000);
+    const timeZone = browserTimeZone();
+    return {
+      ...base,
+      start: { dateTime: toLocalDateTime(start), timeZone },
+      end: { dateTime: toLocalDateTime(end), timeZone }
+    };
+  }
+
+  return { ...base, start: { date: task.due }, end: { date: task.due } };
+}
+
 // Creates a Google Calendar all-day event for every pending task that has a due
 // date and hasn't been synced yet (tracked via task.gcalEventId to avoid duplicates)
 async function syncTasksToGoogleCalendar() {
@@ -102,12 +146,7 @@ async function syncTasksToGoogleCalendar() {
           'Authorization': `Bearer ${state.googleAccessToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          summary: `📋 ${task.title}`,
-          description: `Tarefa criada pelo Gênesis (prioridade: ${task.priority})`,
-          start: { date: task.due },
-          end: { date: task.due }
-        })
+        body: JSON.stringify(buildEventBody(task))
       });
 
       if (!response.ok) throw new Error(await response.text());
@@ -123,6 +162,40 @@ async function syncTasksToGoogleCalendar() {
 
   saveTasks();
   showCalendarStatus(`✅ ${synced} tarefa(s) sincronizada(s) com o Google Agenda.${failed > 0 ? ` ⚠️ ${failed} falharam.` : ''}`, failed > 0 && synced === 0);
+}
+
+// Empurra UMA tarefa recém-criada para o Google Agenda, em silêncio, se já
+// houver conexão ativa (token válido sem popup). Sem conexão, é no-op — a
+// tarefa continua indo pelo botão "Conectar e Sincronizar". Retorna true se
+// criou o evento, para o chamador saber se pode confirmar "agendei".
+export async function syncNewTaskToGoogleCalendar(task) {
+  if (!task.due || task.completed || task.gcalEventId) return false;
+
+  try {
+    await requestGoogleAccessToken({ interactive: false });
+  } catch {
+    return false; // não conectado — silencioso
+  }
+
+  try {
+    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${state.googleAccessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(buildEventBody(task))
+    });
+    if (!response.ok) throw new Error(await response.text());
+
+    const event = await response.json();
+    task.gcalEventId = event.id;
+    saveTasks();
+    return true;
+  } catch (err) {
+    console.error('Erro ao sincronizar nova tarefa com Google Agenda:', err);
+    return false;
+  }
 }
 
 // Best-effort removal of a synced event — called when a task is completed or
@@ -149,9 +222,10 @@ export async function deleteGoogleCalendarEvent(eventId) {
   }
 }
 
-// Best-effort update of a synced event's date — called when a task with an
-// existing Google Agenda event has its due date edited.
-export async function updateGoogleCalendarEventDate(eventId, due) {
+// Best-effort update of a synced event — called when a task with an existing
+// Google Agenda event tem prazo e/ou horário editados. Recebe a tarefa (não só
+// a data) para reconstruir o evento no formato certo (dia-inteiro ou com hora).
+export async function updateGoogleCalendarEvent(eventId, task) {
   try {
     await requestGoogleAccessToken({ interactive: false });
   } catch {
@@ -159,13 +233,14 @@ export async function updateGoogleCalendarEventDate(eventId, due) {
   }
 
   try {
+    const { start, end } = buildEventBody(task);
     const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${state.googleAccessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ start: { date: due }, end: { date: due } })
+      body: JSON.stringify({ start, end })
     });
     if (!response.ok) throw new Error(await response.text());
   } catch (err) {

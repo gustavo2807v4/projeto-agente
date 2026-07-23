@@ -6,7 +6,7 @@ import * as localDb from '../db.js';
 import { state, updateStats } from '../state.js';
 import { escapeHtml, RECURRENCE_LABELS, computeNextDueDate } from '../utils.js';
 import { queueCloudPush } from '../integrations/cloudSync.js';
-import { deleteGoogleCalendarEvent, updateGoogleCalendarEventDate } from '../integrations/googleCalendar.js';
+import { deleteGoogleCalendarEvent, updateGoogleCalendarEvent, syncNewTaskToGoogleCalendar } from '../integrations/googleCalendar.js';
 
 // Save helper — the IndexedDB write happens in the background (fire-and-
 // forget with error logging); render + stats update immediately from the
@@ -25,6 +25,7 @@ function openTaskFormForEdit(task) {
   document.getElementById('task-title').value = task.title;
   document.getElementById('task-priority').value = task.priority;
   document.getElementById('task-due').value = task.due || '';
+  document.getElementById('task-time').value = task.dueTime || '';
   document.getElementById('task-recurrence').value = task.recurrence || '';
   form.classList.remove('hidden');
   form.querySelector('button[type="submit"]').textContent = 'Salvar Alterações';
@@ -82,6 +83,10 @@ export function renderTasks() {
     item.className = `task-item ${task.completed ? 'completed' : ''}`;
 
     const formattedDate = task.due ? new Date(task.due + 'T00:00:00').toLocaleDateString('pt-BR', {day: 'numeric', month: 'short'}) : '';
+    // Compromisso com horário mostra 🕒 HH:MM ao lado da data.
+    const dueLabel = task.due
+      ? `📅 ${formattedDate}${task.dueTime ? ` · 🕒 ${task.dueTime}` : ''}`
+      : '';
 
     item.innerHTML = `
       <div class="task-item-left">
@@ -90,7 +95,7 @@ export function renderTasks() {
           <span class="task-title">${escapeHtml(task.title)}</span>
           <div class="task-meta">
             <span class="task-priority-badge priority-${task.priority}">${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}</span>
-            ${task.due ? `<span class="task-due-date">📅 ${formattedDate}</span>` : ''}
+            ${task.due ? `<span class="task-due-date">${dueLabel}</span>` : ''}
             ${task.recurrence ? `<span class="task-recurrence-badge">🔁 ${RECURRENCE_LABELS[task.recurrence] || task.recurrence}</span>` : ''}
           </div>
         </div>
@@ -176,6 +181,8 @@ export function initTasksUI() {
     const title = document.getElementById('task-title').value.trim();
     const priority = document.getElementById('task-priority').value;
     const due = document.getElementById('task-due').value;
+    // Hora só vale com prazo (evento precisa de uma data).
+    const dueTime = due ? document.getElementById('task-time').value : '';
     const recurrence = document.getElementById('task-recurrence').value;
 
     if (!title) return;
@@ -184,15 +191,17 @@ export function initTasksUI() {
       const task = state.tasks.find(t => t.id === state.editingTaskId);
       if (task) {
         const dueChanged = task.due !== due;
+        const timeChanged = (task.dueTime || '') !== dueTime;
         task.title = title;
         task.priority = priority;
         task.due = due;
+        task.dueTime = dueTime;
         task.recurrence = recurrence;
         if (dueChanged) task.rescheduleCount = (task.rescheduleCount || 0) + 1;
         saveTasks();
-        if (dueChanged && task.gcalEventId) {
+        if ((dueChanged || timeChanged) && task.gcalEventId) {
           if (due) {
-            await updateGoogleCalendarEventDate(task.gcalEventId, due);
+            await updateGoogleCalendarEvent(task.gcalEventId, task);
           } else {
             const eventId = task.gcalEventId;
             task.gcalEventId = undefined;
@@ -208,6 +217,7 @@ export function initTasksUI() {
         title,
         priority,
         due,
+        dueTime,
         recurrence,
         completed: false,
         createdAt: Date.now(),
@@ -215,6 +225,8 @@ export function initTasksUI() {
       };
       state.tasks.push(newTask);
       saveTasks();
+      // Auto-sync silencioso, se o Agenda estiver conectado.
+      await syncNewTaskToGoogleCalendar(newTask);
     }
 
     // Reset and hide form
