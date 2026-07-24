@@ -124,3 +124,4 @@ Em desenvolvimento ativo. Próximo passo: infraestrutura em VPS com n8n e Evolut
 ## Autor
 
 Gustavo — Palhoça, SC
+[github.com/gustavo2807v4](https://github.com/gustavo2807v4)
