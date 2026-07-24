@@ -4,6 +4,10 @@ Assistente pessoal de produtividade em PWA, com captura de tarefas por linguagem
 
 > Projeto pessoal, desenvolvido para uso próprio e como estudo prático de arquitetura front-end, integração com LLMs e testes automatizados.
 
+[![Demo ao vivo](https://img.shields.io/badge/demo-ao%20vivo-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://genesis-produtividade.vercel.app)
+
+**[▶ Testar a aplicação ao vivo](https://genesis-produtividade.vercel.app)**
+
 ### Telas
 
 **Tela principal — o agente criando tarefas por linguagem natural**
