@@ -4,7 +4,15 @@ Gênesis é um **PWA de produtividade pessoal** com um agente de IA integrado. A
 
 > **Stack:** Vite · JavaScript puro (ESM) · Firebase / Firestore · Agente IA via Groq (tool calling) · PWA
 
-<!-- CONFIRMAR-PRINT: o print do app entra aqui (arraste a imagem ou me mande que eu insiro) -->
+### 📸 Telas
+
+**Tela inicial — o agente criando tarefas pelo chat**
+
+![Tela inicial do Gênesis com o agente criando tarefas](docs/screenshot-tarefas.png)
+
+**Rastreador de hábitos — sequências (streaks) e criação de hábitos por conversa**
+
+![Rastreador de hábitos do Gênesis com sequências](docs/screenshot-habitos.png)
 
 ---
 
